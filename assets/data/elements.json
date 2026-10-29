@@ -1,0 +1,42 @@
+[
+  {
+    "id": "health",
+    "image": "img/cards/health.png",
+    "aspects": { "body": 1 },
+    "triggers": [
+      { "slot": "work",   "event": "work_basic" },
+      { "slot": "go_out", "event": "go_out_basic" }
+    ]
+  },
+  {
+    "id": "coin",
+    "aspects": { "money": 1 }
+  },
+  {
+    "id": "passion",
+    "aspects": { "spirit": 1 }
+  },
+  {
+    "id": "reason",
+    "aspects": { "mind": 1 },
+    "triggers": [
+      { "slot": "study", "event": "study_basic" }
+    ]
+  },
+  {
+    "id": "lantern",
+    "aspects": { "light": 1 },
+    "triggers": [
+      { "slot": "go_out", "event": "night_walk" }
+    ]
+  },
+  {
+    "id": "insight",
+    "aspects": { "knowledge": 1 }
+  },
+  {
+    "id": "disease_flu",
+    "aspects": { "sickness": 1 },
+    "lifetime": 90
+  }
+]

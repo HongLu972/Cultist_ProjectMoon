@@ -1,0 +1,106 @@
+[
+  {
+    "id": "work_basic",
+    "start": "manual",
+    "time": 10,
+    "input": { "body": 1 },
+    "slots": [
+      { "id": "work_extra" }
+    ],
+    "action": [
+      { "type": "create", "target": "coin", "amount": 1 },
+      { "type": "check", "aspects": { "spirit": 1 },
+        "onSuccess": [
+          { "type": "consume", "target": "spirit", "amount": 1 },
+          { "type": "create", "target": "coin", "amount": 1 }
+        ]
+      },
+      { "type": "check", "aspects": { "mind": 1 },
+        "onSuccess": [
+          { "type": "chance", "percent": 30,
+            "onSuccess": [ { "type": "trigger", "event": "work_overtime" } ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "work_overtime",
+    "start": "linked",
+    "time": 5,
+    "action": [
+      { "type": "create", "target": "coin", "amount": 1 },
+      { "type": "consume", "target": "mind", "amount": 1 }
+    ]
+  },
+  {
+    "id": "study_basic",
+    "start": "manual",
+    "time": 15,
+    "input": { "mind": 1 },
+    "slots": [
+      { "id": "study_extra" }
+    ],
+    "action": [
+      { "type": "create", "target": "insight", "amount": 1 },
+      { "type": "check", "aspects": { "light": 1 },
+        "onSuccess": [ { "type": "create", "target": "insight", "amount": 1 } ]
+      }
+    ]
+  },
+  {
+    "id": "go_out_basic",
+    "start": "manual",
+    "time": 8,
+    "input": { "body": 1 },
+    "slots": [
+      { "id": "go_out_extra" }
+    ],
+    "action": [
+      { "type": "chance", "percent": 40,
+        "onSuccess": [ { "type": "create", "target": "passion", "amount": 1 } ]
+      }
+    ]
+  },
+  {
+    "id": "night_walk",
+    "start": "manual",
+    "time": 12,
+    "input": { "light": 1 },
+    "slots": [
+      { "id": "night_extra" }
+    ],
+    "action": [
+      { "type": "produce" }
+    ],
+    "products": [
+      { "card": "insight", "amount": 1 }
+    ]
+  },
+  {
+    "id": "time",
+    "start": "auto",
+    "time": 60,
+    "action": [
+      { "type": "drain", "target": "coin", "amount": 1,
+        "onFail": [
+          { "type": "drain", "target": "health", "amount": 1,
+            "onSuccess": [ { "type": "produce" } ],
+            "onFail":    [ { "type": "trigger", "event": "starved" } ]
+          }
+        ]
+      }
+    ],
+    "products": [
+      { "card": "disease_flu", "amount": 1 }
+    ]
+  },
+  {
+    "id": "starved",
+    "start": "linked",
+    "time": 0,
+    "action": [
+      { "type": "end_game", "ending": "starved" }
+    ]
+  }
+]
