@@ -11,6 +11,7 @@
   "slot.time_slot_A.name": "Michelle's Despair", "slot.time_slot_B.name": "Michelle's Despair", "slot.time_slot_C.name": "Michelle's Despair", "slot.time_slot_D.name": "Michelle's Despair", "slot.time_slot_E.name": "Michelle's Despair", 
 
   "slot.f_slot_1.name": "Fate", "slot.f_slot_2.name": "Fate", "slot.f_slot_3.name": "Fate", "slot.f_slot_4.name": "Fate", "slot.f_slot_5.name": "Fate", "slot.f_slot_6.name": "Fate", "slot.f_slot_7.name": "Fate", "slot.f_slot_8.name": "Fate", "slot.f_slot_9.name": "Fate", "slot.f_slot_10.name": "Fate", "slot.f_slot_11.name": "Fate", "slot.f_slot_12.name": "Fate", "slot.f_slot_13.name": "Fate", "slot.f_slot_14.name": "Fate", "slot.f_slot_15.name": "Fate", "slot.f_slot_16.name": "Fate", "slot.f_slot_17.name": "Fate", "slot.f_slot_18.name": "Fate",
+"slot.p_slot_1.name": "Input",
 
   "element.carmen_invitation.name": "The Final Moment", "element.eye.name": "Eyes", "element.health.name": "Health", "element.reason.name": "Reason", "element.hope.name": "Hope", "element.despair.name": "Despair", "element.readiness.name": "Readiness", "element.evacuation.name": "Evacuation", "element.evidence.name": "Evidence", "element.disease_flu.name": "Chill",
 

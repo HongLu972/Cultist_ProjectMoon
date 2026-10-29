@@ -11,8 +11,7 @@
       { "type": "create", "target": "health", "amount": 1 },
       { "type": "create", "target": "reason", "amount": 2 },
       { "type": "create", "target": "hope", "amount": 3 },
-      { "type": "trigger", "event": "delta" },
-      { "type": "trigger", "event": "time_A" }
+      { "type": "trigger", "event": "delta" }
     ]
   },
   {
@@ -40,7 +39,10 @@
     "start": "manual",
     "slot": "prepare",
     "time": 12,
-    "input": { "money": 1 },
+    "input": { "money": 2 },
+    "slots": [
+      { "id": "p_slot_1" }
+    ],
     "action": [
       { "type": "consume", "target": "money", "amount": 1 },
       { "type": "create", "target": "readiness", "amount": 1 },
@@ -194,7 +196,7 @@
     "start": "manual",
     "slot": "none",
     "autoStart": true,
-    "time": 45,
+    "time": 12,
     "forceDrainAspects": ["readiness", "evacuation"],
     "slots": [
       { "id": "f_slot_1" }, { "id": "f_slot_2" }, { "id": "f_slot_3" },
