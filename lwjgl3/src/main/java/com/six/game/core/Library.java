@@ -4,10 +4,11 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** 静态定义的仓库:卡牌、行动。保持文件里的顺序。 */
+/** 静态定义的仓库:卡牌、行动、结局。保持文件里的顺序。 */
 public class Library {
     private final Map<String, Element> elements = new LinkedHashMap<>();
     private final Map<String, VerbDef> verbs = new LinkedHashMap<>();
+    private final Map<String, EndingDef> endings = new LinkedHashMap<>();
 
     public void add(Element e) {
         elements.put(e.id, e);
@@ -43,5 +44,23 @@ public class Library {
 
     public Collection<VerbDef> verbs() {
         return verbs.values();
+    }
+
+    public void addEnding(EndingDef e) {
+        endings.put(e.id, e);
+    }
+
+    public boolean hasEnding(String id) {
+        return endings.containsKey(id);
+    }
+
+    public EndingDef ending(String id) {
+        EndingDef e = endings.get(id);
+        if (e == null) throw new IllegalArgumentException("未知结局: " + id);
+        return e;
+    }
+
+    public Collection<EndingDef> endings() {
+        return endings.values();
     }
 }

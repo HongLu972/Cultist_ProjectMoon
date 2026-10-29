@@ -5,33 +5,50 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 一个行动窗口(作业、研究、出门……)。
- * 状态:空闲(只有起始槽) -> 已选定事件(起始槽放了有触发器的牌,出现额外槽) -> 进行中 -> 结算后回到空闲。
- * UI 只应通过 canPlace / placeCard / takeCard / start 操作它。
- */
 public class Situation {
     public final String situationId;
     public final String verbId;
-    /** slots.get(0) 永远是起始槽。 */
+    public final boolean eventWindow;
     public final List<Slot> slots = new ArrayList<>();
-    /** 起始牌触发的事件;空闲时为 null。 */
     public EventDef selected;
-    /** 正在计时的事件(链式后续事件会替换它);没在运行时为 null。 */
     public EventDef running;
     public float timer;
+    public float x, y;
+    public boolean finished;
 
     private final GameState state;
+    private final boolean hasCarrier;
 
     Situation(GameState state, String situationId, VerbDef verb) {
         this.state = state;
         this.situationId = situationId;
         this.verbId = verb.id;
+        this.eventWindow = false;
+        this.hasCarrier = false;
         slots.add(new Slot(situationId + ":" + verb.id, verb.id, Map.of(), false));
     }
 
-    public boolean isRunning() {
-        return running != null;
+    Situation(GameState state, String situationId, EventDef event, ElementInstance carrier) {
+        this.state = state;
+        this.situationId = situationId;
+        this.verbId = null;
+        this.eventWindow = true;
+        this.hasCarrier = carrier != null;
+        this.selected = event;
+        if (carrier != null) {
+            Slot s = new Slot(situationId + ":carrier", "carrier", Map.of(), false);
+            s.content = carrier;
+            slots.add(s);
+        }
+        for (SlotDef sd : event.slots) {
+            slots.add(new Slot(situationId + ":" + sd.id, sd.id, sd.accepts, sd.required));
+        }
+    }
+
+    public boolean isRunning() { return running != null; }
+
+    public boolean isSeed(int i) {
+        return i == 0 && (!eventWindow || hasCarrier);
     }
 
     public Slot findSlot(String defId) {
@@ -41,74 +58,114 @@ public class Situation {
         return null;
     }
 
-    /**
-     * 能不能放:没在运行、槽空着、牌没锁定;
-     * 起始槽要求这张牌对本行动有触发器,其他槽要求牌满足槽的 accepts。
-     */
     public boolean canPlace(int slotIndex, ElementInstance card) {
-        if (isRunning()) return false;
+        if (finished) return false;
         if (slotIndex < 0 || slotIndex >= slots.size()) return false;
         if (card == null || card.locked) return false;
+
         Slot slot = slots.get(slotIndex);
         if (slot.content != null) return false;
-        if (slotIndex == 0) return card.def.eventFor(verbId) != null;
+
+        // 如果事件正在运行中，允许强行往空的强制吸入槽里放牌
+        if (isRunning()) {
+            if (running.forceDrainAspect != null && slotIndex == 0) {
+                return card.aspects().getOrDefault(running.forceDrainAspect, 0) > 0;
+            }
+            return false;
+        }
+
+        if (!eventWindow && slotIndex == 0) return card.def.eventFor(verbId) != null;
         return Aspects.satisfies(card.aspects(), slot.accepts);
     }
 
     public boolean placeCard(int slotIndex, ElementInstance card) {
         if (!canPlace(slotIndex, card)) return false;
-        slots.get(slotIndex).content = card;
-        if (slotIndex == 0) {
-            select(state.events.require(card.def.eventFor(verbId)));
+        ElementInstance placed = state.splitOne(card);
+        slots.get(slotIndex).content = placed;
+
+        // 如果事件正在运行中，放进去后直接锁定
+        if (isRunning()) {
+            placed.locked = true;
+            return true;
+        }
+
+        if (!eventWindow && slotIndex == 0) {
+            selected = state.events.require(placed.def.eventFor(verbId));
+            for (SlotDef sd : selected.slots) {
+                slots.add(new Slot(situationId + ":" + sd.id, sd.id, sd.accepts, sd.required));
+            }
+            if (selected.autoStart && canStart()) start();
         }
         return true;
     }
 
-    private void select(EventDef e) {
-        selected = e;
-        for (SlotDef sd : e.slots) {
-            slots.add(new Slot(situationId + ":" + sd.id, sd.id, sd.accepts, sd.required));
-        }
-    }
-
-    /** 把牌从槽里取走。运行中不允许。取走起始牌会让整个窗口回到空闲。 */
     public ElementInstance takeCard(int slotIndex) {
-        if (isRunning()) return null;
+        if (isRunning() || finished) return null;
         if (slotIndex < 0 || slotIndex >= slots.size()) return null;
         Slot slot = slots.get(slotIndex);
         ElementInstance c = slot.content;
         if (c == null) return null;
         slot.content = null;
-        if (slotIndex == 0) reset();
+        if (isSeed(slotIndex)) {
+            if (eventWindow) finish();
+            else reset();
+        }
         return c;
     }
 
-    /** 回到空闲:所有槽里的牌回到桌面(解锁),额外槽消失,只保留起始槽。 */
-    public void reset() {
-        for (Slot s : slots) {
-            if (s.content != null) {
-                s.content.locked = false;
-                s.content = null;
-            }
+    void cardRemoved(int slotIndex) {
+        if (isRunning() || finished) return;
+        if (isSeed(slotIndex)) {
+            if (eventWindow) finish();
+            else reset();
         }
+    }
+
+    public void reset() {
+        boolean released = releaseCards();
         while (slots.size() > 1) slots.remove(slots.size() - 1);
         selected = null;
         running = null;
         timer = 0f;
+        if (released) state.placeNewCards(x, y);
+    }
+
+    private void finish() {
+        releaseCards();
+        slots.clear();
+        selected = null;
+        running = null;
+        timer = 0f;
+        finished = true;
+        state.placeNewCards(x, y);
+    }
+
+    private boolean releaseCards() {
+        boolean released = false;
+        for (Slot s : slots) {
+            if (s.content != null) {
+                s.content.locked = false;
+                s.content.x = Float.NaN;
+                s.content.y = Float.NaN;
+                s.content = null;
+                released = true;
+            }
+        }
+        return released;
     }
 
     public Map<String, Integer> totalAspects() {
         Map<String, Integer> total = new HashMap<>();
         for (Slot s : slots) {
             if (s.content == null) continue;
-            s.content.aspects().forEach((k, v) -> total.merge(k, v, Integer::sum));
+            ElementInstance c = s.content;
+            c.aspects().forEach((k, v) -> total.merge(k, v * c.count, Integer::sum));
         }
         return total;
     }
 
-    /** 已选定事件、词条总量够、必填槽都放了牌。 */
     public boolean canStart() {
-        if (isRunning() || selected == null) return false;
+        if (isRunning() || finished || selected == null) return false;
         if (!Aspects.satisfies(totalAspects(), selected.input)) return false;
         for (Slot s : slots) {
             if (s.required && s.content == null) return false;
@@ -120,15 +177,22 @@ public class Situation {
         if (!canStart()) return false;
         running = selected;
         timer = running.time;
+
+        // 开始瞬间先吸一次
+        tryForceDrain();
+        // 再锁定
         for (Slot s : slots) {
             if (s.content != null) s.content.locked = true;
         }
         return true;
     }
 
-    /** delta 已经乘过倍速。 */
     public void update(float delta) {
-        if (running == null) return;
+        if (running == null || finished) return;
+
+        // 【核心修复】运行期间，每一帧都持续尝试吸入
+        tryForceDrain();
+
         timer -= delta;
         if (timer > 0) return;
 
@@ -136,13 +200,29 @@ public class Situation {
         ActionContext ctx = new ActionContext(state, this, done);
         Action.runAll(done.action, ctx);
         state.fireEventCompleted(this, done);
+        state.placeNewCards(x, y);
 
         if (ctx.next != null) {
-            // 链式推进:牌继续保持锁定,沿用当前槽位
             running = state.events.require(ctx.next);
             timer = running.time;
+        } else if (eventWindow) {
+            finish();
         } else {
             reset();
+        }
+    }
+
+    // 封装强制吸入逻辑，供 start 和 update 调用
+    private void tryForceDrain() {
+        if (running == null || running.forceDrainAspect == null) return;
+        if (slots.isEmpty() || slots.get(0).content != null) return;
+
+        for (ElementInstance c : state.cards) {
+            if (!c.locked && !state.isInAnySlot(c) && c.aspects().getOrDefault(running.forceDrainAspect, 0) > 0) {
+                slots.get(0).content = state.splitOne(c);
+                slots.get(0).content.locked = true;
+                break;
+            }
         }
     }
 }

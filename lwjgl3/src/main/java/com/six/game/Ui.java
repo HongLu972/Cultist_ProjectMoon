@@ -72,6 +72,11 @@ public class Ui implements Disposable {
         return t;
     }
 
+    /** 1x1 的白色区域,用来在自绘的 Actor 里画纯色矩形(配合 batch.setColor)。 */
+    public TextureRegion whiteRegion() {
+        return whiteDrawable.getRegion();
+    }
+
     /** 纯色矩形背景。 */
     public Drawable rect(Color c) {
         return whiteDrawable.tint(c);

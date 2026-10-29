@@ -17,13 +17,18 @@ public class Element {
     public float lifetime = -1f;
     /** 寿命到期后变成哪张牌;不写则直接消失。 */
     public String decayTo;
-    /** "放在行动槽 X 里,触发事件 Y"。 */
+    /** 能不能堆叠:同种牌可以叠成一摞,摞里的每张是同一种牌。 */
+    public boolean stackable;
+    /**
+     * "放在 X 里,触发事件 Y"。X 是行动槽 id(verbs.json 里的行动),
+     * 或者特殊值 "use"(在桌面上双击这张牌来"使用"它)。
+     */
     public ArrayList<Trigger> triggers = new ArrayList<>();
 
+    public static final String USE = "use";
+
     public static class Trigger {
-        /** 行动槽 id,即 verbs.json 里某个行动的 id。 */
         public String slot;
-        /** 要触发的事件 id(必须是 manual 事件)。 */
         public String event;
     }
 
@@ -34,7 +39,7 @@ public class Element {
         this.id = id;
     }
 
-    /** 这张牌放进 slotId 对应的行动槽时会触发哪个事件;没有则返回 null。 */
+    /** 这张牌在 slotId 处会触发哪个事件;没有则返回 null。 */
     public String eventFor(String slotId) {
         for (Trigger t : triggers) {
             if (t.slot.equals(slotId)) return t.event;

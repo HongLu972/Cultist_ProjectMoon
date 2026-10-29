@@ -9,7 +9,7 @@ import java.util.List;
 public final class Actions {
     private Actions() {}
 
-    /** "create":在桌面上创建 amount 张 target 卡。永远成功。 */
+    /** "create":在桌面上创建 amount 张 target 卡(可堆叠的会并进已有的那摞)。永远成功。 */
     public static class Create extends Action {
         public String target;
         public int amount = 1;
@@ -23,8 +23,7 @@ public final class Actions {
 
         @Override
         public boolean execute(ActionContext ctx) {
-            Element def = ctx.state.library.element(target);
-            for (int i = 0; i < amount; i++) ctx.state.addCard(def);
+            ctx.state.addCards(ctx.state.library.element(target), amount);
             return true;
         }
     }
@@ -59,7 +58,7 @@ public final class Actions {
     }
 
     /**
-     * "drain":从整个游戏里"吸走"amount 张带有 target 词条(或 id)的、未锁定的牌。
+     * "drain":从整个游戏里"吸走"amount 张带有 target 词条(或 id)的、未锁定的牌(堆叠的按张数算)。
      * 数量不够则一张都不吸并返回失败。优先吸桌面上的,其次才是窗口槽里的。
      */
     public static class Drain extends Action {
@@ -76,12 +75,22 @@ public final class Actions {
         @Override
         public boolean execute(ActionContext ctx) {
             List<ElementInstance> found = new ArrayList<>();
+            long available = 0;
             for (ElementInstance c : ctx.state.cards) {
-                if (!c.locked && ActionContext.hasAspect(c, target)) found.add(c);
+                if (!c.locked && ActionContext.hasAspect(c, target)) {
+                    found.add(c);
+                    available += c.count;
+                }
             }
-            if (found.size() < amount) return false;
+            if (available < amount) return false;
             found.sort(Comparator.comparingInt(c -> ctx.state.isInAnySlot(c) ? 1 : 0));
-            for (int i = 0; i < amount; i++) ctx.state.removeCard(found.get(i));
+            int left = amount;
+            for (ElementInstance c : found) {
+                if (left <= 0) break;
+                int take = Math.min(left, c.count);
+                ctx.state.removeFromStack(c, take);
+                left -= take;
+            }
             return true;
         }
     }
@@ -91,16 +100,17 @@ public final class Actions {
         @Override
         public boolean execute(ActionContext ctx) {
             for (EventDef.Product p : ctx.event.products) {
-                Element def = ctx.state.library.element(p.card);
-                for (int i = 0; i < p.amount; i++) ctx.state.addCard(def);
+                ctx.state.addCards(ctx.state.library.element(p.card), p.amount);
             }
             return true;
         }
     }
 
     /**
-     * "trigger":触发另一个事件。在窗口里是"接着往下做"(沿用当前槽位,只取第一个 trigger);
-     * 在自动事件里则作为后台事件立刻(time 为 0)或稍后执行。永远成功。
+     * "trigger":触发另一个事件。目标事件的类型决定怎么跑:
+     *   linked  在窗口里是"接着往下做"(沿用当前槽位,只取第一个 trigger);没有窗口时作为后台事件立刻执行
+     *   manual 且 slot 为 none  开一个独立的事件窗口(自动开始,结束后自动关闭)
+     * 永远成功。
      */
     public static class TriggerEvent extends Action {
         public String event;
@@ -113,16 +123,45 @@ public final class Actions {
 
         @Override
         public boolean execute(ActionContext ctx) {
-            if (ctx.situation != null) {
-                if (ctx.next == null) ctx.next = event;
+            EventDef target = ctx.state.events.require(event);
+            if ("linked".equals(target.start)) {
+                if (ctx.situation != null) {
+                    if (ctx.next == null) ctx.next = event;
+                } else {
+                    ctx.state.runBackground(event);
+                }
             } else {
-                ctx.state.runBackground(event);
+                float x = ctx.situation != null ? ctx.situation.x + GameState.WINDOW_SPACING : ctx.state.worldWidth / 2f;
+                float y = ctx.situation != null ? ctx.situation.y : ctx.state.worldHeight / 2f - 100f;
+                ctx.state.openEventWindow(target, null, x, y);
             }
             return true;
         }
     }
 
-    /** "end_game":结束游戏,ending 是结局 id(文字见 ending.&lt;id&gt;.name / .desc)。永远成功。 */
+    /** "unlock_verb":解锁一个行动窗口(已经有了就什么都不做)。永远成功。 */
+    public static class UnlockVerb extends Action {
+        public String verb;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            ctx.state.unlockVerb(verb);
+            return true;
+        }
+    }
+
+    /** "start_auto":启动一个 auto 事件的自动循环(已经在循环就什么都不做)。永远成功。 */
+    public static class StartAuto extends Action {
+        public String event;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            ctx.state.startAuto(event);
+            return true;
+        }
+    }
+
+    /** "end_game":结束游戏,ending 是 endings.json 里的结局 id。永远成功。 */
     public static class EndGame extends Action {
         public String ending;
 

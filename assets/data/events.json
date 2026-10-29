@@ -1,18 +1,37 @@
 [
   {
+    "id": "first_work",
+    "start": "manual",
+    "slot": "work",
+    "autoStart": true,
+    "time": 8,
+    "action": [
+      { "type": "consume", "target": "carmen_invitation", "amount": 1 },
+      { "type": "create", "target": "eye", "amount": 5 },
+      { "type": "unlock_verb", "verb": "study" },
+      { "type": "unlock_verb", "verb": "go_out" },
+      { "type": "create", "target": "cogito", "amount": 1 },
+      { "type": "create", "target": "part_time_job", "amount": 1 },
+      { "type": "create", "target": "health", "amount": 1 },
+      { "type": "create", "target": "reason", "amount": 2 },
+      { "type": "create", "target": "passion", "amount": 2 }
+    ]
+  },
+  {
     "id": "work_basic",
     "start": "manual",
+    "slot": "work",
     "time": 10,
     "input": { "body": 1 },
     "slots": [
       { "id": "work_extra" }
     ],
     "action": [
-      { "type": "create", "target": "coin", "amount": 1 },
+      { "type": "create", "target": "eye", "amount": 1 },
       { "type": "check", "aspects": { "spirit": 1 },
         "onSuccess": [
           { "type": "consume", "target": "spirit", "amount": 1 },
-          { "type": "create", "target": "coin", "amount": 1 }
+          { "type": "create", "target": "eye", "amount": 1 }
         ]
       },
       { "type": "check", "aspects": { "mind": 1 },
@@ -27,15 +46,17 @@
   {
     "id": "work_overtime",
     "start": "linked",
+    "slot": "none",
     "time": 5,
     "action": [
-      { "type": "create", "target": "coin", "amount": 1 },
+      { "type": "create", "target": "eye", "amount": 1 },
       { "type": "consume", "target": "mind", "amount": 1 }
     ]
   },
   {
     "id": "study_basic",
     "start": "manual",
+    "slot": "study",
     "time": 15,
     "input": { "mind": 1 },
     "slots": [
@@ -51,6 +72,7 @@
   {
     "id": "go_out_basic",
     "start": "manual",
+    "slot": "go_out",
     "time": 8,
     "input": { "body": 1 },
     "slots": [
@@ -65,6 +87,7 @@
   {
     "id": "night_walk",
     "start": "manual",
+    "slot": "go_out",
     "time": 12,
     "input": { "light": 1 },
     "slots": [
@@ -78,29 +101,60 @@
     ]
   },
   {
-    "id": "time",
-    "start": "auto",
-    "time": 60,
+    "id": "part_time",
+    "start": "manual",
+    "slot": "none",
+    "time": 40,
     "action": [
-      { "type": "drain", "target": "coin", "amount": 1,
+      { "type": "chance", "percent": 100,
+        "onSuccess": [ { "type": "create", "target": "eye", "amount": 1 } ]
+      }
+    ]
+  },
+  {
+    "id": "time",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 60,
+    "forceDrainAspect": "money",
+    "slots": [ { "id": "time_slot" } ],
+    "action": [
+      { 
+        "type": "check", "aspects": { "money": 1 },
+        "onSuccess": [
+          { "type": "consume", "target": "money", "amount": 1 }
+        ],
         "onFail": [
-          { "type": "drain", "target": "health", "amount": 1,
-            "onSuccess": [ { "type": "produce" } ],
-            "onFail":    [ { "type": "trigger", "event": "starved" } ]
-          }
+          { "type": "trigger", "event": "time_1" }
+        ]
+      },
+      { "type": "trigger", "event": "time" }
+    ]
+  },
+  {
+    "id": "time_1",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 60,
+    "forceDrainAspect": "body",
+    "slots": [ { "id": "time_slot_1" } ],
+    "action": [
+      { 
+        "type": "check", "aspects": { "body": 1 },
+        "onSuccess": [
+          { "type": "consume", "target": "body", "amount": 1 },
+          { "type": "produce" },
+          { "type": "trigger", "event": "time" }
+        ],
+        "onFail": [
+          { "type": "end_game", "ending": "poverty" }
         ]
       }
     ],
     "products": [
       { "card": "disease_flu", "amount": 1 }
-    ]
-  },
-  {
-    "id": "starved",
-    "start": "linked",
-    "time": 0,
-    "action": [
-      { "type": "end_game", "ending": "starved" }
     ]
   }
 ]

@@ -1,7 +1,20 @@
 [
   {
+    "id": "carmen_invitation",
+    "aspects": { "invitation": 1 },
+    "triggers": [
+      { "slot": "work", "event": "first_work" }
+    ]
+  },
+  {
+    "id": "eye",
+    "stackable": true,
+    "aspects": { "money": 1 }
+  },
+  {
     "id": "health",
     "image": "img/cards/health.png",
+    "stackable": true,
     "aspects": { "body": 1 },
     "triggers": [
       { "slot": "work",   "event": "work_basic" },
@@ -9,18 +22,27 @@
     ]
   },
   {
-    "id": "coin",
-    "aspects": { "money": 1 }
-  },
-  {
-    "id": "passion",
-    "aspects": { "spirit": 1 }
-  },
-  {
     "id": "reason",
+    "stackable": true,
     "aspects": { "mind": 1 },
     "triggers": [
       { "slot": "study", "event": "study_basic" }
+    ]
+  },
+  {
+    "id": "passion",
+    "stackable": true,
+    "aspects": { "spirit": 1 }
+  },
+  {
+    "id": "cogito",
+    "aspects": { "cogito": 1 }
+  },
+  {
+    "id": "part_time_job",
+    "aspects": { "opportunity": 1 },
+    "triggers": [
+      { "slot": "use", "event": "part_time" }
     ]
   },
   {
@@ -32,6 +54,7 @@
   },
   {
     "id": "insight",
+    "stackable": true,
     "aspects": { "knowledge": 1 }
   },
   {

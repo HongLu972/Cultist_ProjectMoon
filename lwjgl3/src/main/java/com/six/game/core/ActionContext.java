@@ -19,13 +19,13 @@ public class ActionContext {
         this.event = event;
     }
 
-    /** 有窗口时是窗口槽里的词条总量;没有窗口时是桌面上所有未锁定的牌的词条总量。 */
+    /** 有窗口时是窗口槽里的词条总量;没有窗口时是桌面上所有未锁定的牌(含堆叠数量)的词条总量。 */
     public Map<String, Integer> aspects() {
         if (situation != null) return situation.totalAspects();
         Map<String, Integer> total = new HashMap<>();
         for (ElementInstance c : state.cards) {
             if (c.locked) continue;
-            c.aspects().forEach((k, v) -> total.merge(k, v, Integer::sum));
+            c.aspects().forEach((k, v) -> total.merge(k, v * c.count, Integer::sum));
         }
         return total;
     }

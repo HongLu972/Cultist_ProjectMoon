@@ -2,11 +2,15 @@ package game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup;
@@ -15,7 +19,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.scenes.scene2d.utils.DragAndDrop;
+import com.badlogic.gdx.scenes.scene2d.utils.DragListener;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import game.core.Clock;
@@ -29,13 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-/**
- * 桌面主界面。原则:引擎状态是唯一真相,界面只是它的投影。
- * 状态一变(或拖拽落下),就整体重建界面和拖拽注册——简单、不会漂移。
- * 重建不能发生在拖拽过程中,否则被拖的 Actor 会被销毁。
- * 选中状态用 id 保存(不持有 Actor),重建后依然有效。
- * 描述文字默认不显示:点卡牌、槽位、窗口标题才在点击处弹出信息框,点空白处收起。
- */
 public class GameScreen implements Screen {
     private static final float STAGE_W = 1280, STAGE_H = 720;
     private static final String KIND_CARD = "card";
@@ -45,19 +42,19 @@ public class GameScreen implements Screen {
     private final Ui ui;
     private final GameState state;
     private final Clock clock = new Clock();
-    private final Stage stage = new Stage(new FitViewport(STAGE_W, STAGE_H));
-    private final DragAndDrop dnd = new DragAndDrop();
-    private final Table root = new Table();
+
+    private final Stage worldStage = new Stage(new FitViewport(STAGE_W, STAGE_H));
+    private final Stage uiStage = new Stage(new FitViewport(STAGE_W, STAGE_H));
+
+    private final Group worldGroup = new Group();
+
     private final InfoPanel infoPanel;
     private final LogPanel logPanel;
     private final Table speedBar = new Table();
     private final Label pausedLabel;
     private final Vector2 tmp = new Vector2();
 
-    // 拖拽时"抓在牌的哪个位置"(相对牌左下角)。每帧据此摆放被拖的牌,保证牌紧贴鼠标。
-    private float grabX = CardActor.W / 2f, grabY = CardActor.H / 2f;
-
-    private String selKind;          // null 表示没有选中
+    private String selKind;
     private String selId;
     private float infoX, infoY;
     private String lastInfoTitle, lastInfoBody;
@@ -75,28 +72,46 @@ public class GameScreen implements Screen {
         this.pausedLabel.setVisible(false);
         buildSpeedBar(speeds);
 
-        dnd.setKeepWithinStage(false);
-        root.setFillParent(true);
-        stage.addActor(root);
-        stage.addActor(infoPanel); // 浮层,盖在 root 之上
+        worldGroup.setSize(state.worldWidth, state.worldHeight);
+        worldGroup.addActor(new WorldBackground(ui, state.worldWidth, state.worldHeight));
+        worldGroup.setPosition((STAGE_W - state.worldWidth) / 2f, (STAGE_H - state.worldHeight) / 2f);
+        worldStage.addActor(worldGroup);
+
+        Table uiRoot = new Table();
+        uiRoot.setFillParent(true);
+        uiRoot.add(speedBar).expandX().right().pad(8).row();
+        uiRoot.add().expand().row();
+        uiRoot.add(logPanel).width(LogPanel.W).right().bottom().pad(8);
+        uiStage.addActor(uiRoot);
+        uiStage.addActor(infoPanel);
         infoPanel.setVisible(false);
 
-        // 点在空白处(没有点中任何 Actor)就收起信息框
-        stage.getRoot().addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                if (event.getTarget() == stage.getRoot()) hideInfo();
+        InputMultiplexer multiplexer = new InputMultiplexer(uiStage, worldStage);
+        Gdx.input.setInputProcessor(multiplexer);
+
+        setupWorldInput();
+
+        state.addListener((situation, event) -> {
+            String key = "event." + event.id + ".result";
+            if (ui.texts.has(key)) {
+                logPanel.add(ui.texts.get(key), ui);
+            } else {
+                logPanel.add("【" + ui.texts.get("event." + event.id + ".name", event.id) + "】已结算", ui);
             }
         });
 
-        // 事件结算时,把 event.<id>.result 写进记录
-        state.addListener((situation, event) -> {
-            String key = "event." + event.id + ".result";
-            if (ui.texts.has(key)) logPanel.add(ui.texts.get(key));
-        });
+        // 开局立刻生成第一个“时间流逝”窗口
+        spawnTimeWindow();
     }
 
-    // ---------------------------------------------------------------- 倍速条
+    private void spawnTimeWindow() {
+        EventDef timeEvent = state.events.get("time");
+        if (timeEvent != null) {
+            Situation s = state.openEventWindow(timeEvent, null, state.worldWidth - 400, state.worldHeight - 400);
+            s.start();
+            dirty = true;
+        }
+    }
 
     private void buildSpeedBar(float[] speeds) {
         speedBar.add(pausedLabel).padRight(14);
@@ -120,66 +135,198 @@ public class GameScreen implements Screen {
         return (s == (int) s ? String.valueOf((int) s) : String.valueOf(s)) + "x";
     }
 
-    // ---------------------------------------------------------------- 重建界面
+    private void setupWorldInput() {
+        worldStage.getRoot().addListener(new InputListener() {
+            private float lastStageX, lastStageY;
+            private boolean draggingView;
+
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                if (button == Input.Buttons.LEFT && (event.getTarget() == worldStage.getRoot() || event.getTarget() instanceof WorldBackground)) {
+                    hideInfo();
+                    return true;
+                }
+                if (button == Input.Buttons.RIGHT) {
+                    if (event.getTarget() instanceof CardActor) return false;
+                    lastStageX = event.getStageX();
+                    lastStageY = event.getStageY();
+                    draggingView = true;
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
+            public void touchDragged(InputEvent event, float x, float y, int pointer) {
+                if (draggingView) {
+                    float dx = event.getStageX() - lastStageX;
+                    float dy = event.getStageY() - lastStageY;
+                    worldGroup.moveBy(dx, dy);
+                    lastStageX = event.getStageX();
+                    lastStageY = event.getStageY();
+                }
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                draggingView = false;
+            }
+
+            @Override
+            public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY) {
+                OrthographicCamera cam = (OrthographicCamera) worldStage.getCamera();
+                cam.zoom = Math.max(0.5f, Math.min(2.0f, cam.zoom + amountY * 0.1f));
+                cam.update();
+                return true;
+            }
+        });
+    }
 
     private void rebuild() {
-        dnd.clear();
-        root.clear();
-
-        root.add(speedBar).expandX().right().pad(8).row();
-
-        Table windows = new Table();
-        List<SituationView> views = new ArrayList<>();
-        for (Situation s : state.situations) {
-            SituationView v = new SituationView(ui, s);
-            views.add(v);
-            windows.add(v).top().pad(6);
-            addWindowClick(v);
+        for (int i = worldGroup.getChildren().size - 1; i >= 0; i--) {
+            Actor a = worldGroup.getChildren().get(i);
+            if (!(a instanceof WorldBackground)) a.remove();
         }
-        root.add(windows).expand().top().row();
 
-        Table tray = new Table();
-        tray.setBackground(ui.rect(new Color(0.10f, 0.08f, 0.13f, 1f)));
-        tray.pad(10).top().left();
-        int col = 0;
+        List<WindowView> views = new ArrayList<>();
+        for (Situation s : state.situations) {
+            WindowView v = new WindowView(ui, s);
+            v.setPosition(s.x, s.y);
+            addWindowClick(v);
+            addWindowDrag(v); // 整个窗口绑定拖拽
+            worldGroup.addActor(v);
+            views.add(v);
+        }
+
         for (ElementInstance c : state.cards) {
             if (state.isInAnySlot(c)) continue;
             CardActor a = new CardActor(ui, c);
-            tray.add(a).size(CardActor.W, CardActor.H).pad(6);
-            addSource(a);
+            if (!Float.isNaN(c.x)) a.setPosition(c.x, c.y);
+            addCardDrag(a);
             addSelectOnClick(a);
-            if (++col % 8 == 0) tray.row();
+            addCardRightClick(a);
+            worldGroup.addActor(a);
         }
-        Table bottom = new Table();
-        bottom.add(tray).growX().height(240);
-        bottom.add(logPanel).width(LogPanel.W).height(240).padLeft(8);
-        root.add(bottom).growX();
 
-        for (SituationView v : views) {
+        for (WindowView v : views) {
             for (SlotActor sa : v.slotActors) {
-                addSlotTarget(sa);
                 addSelectOnClick(sa);
                 if (sa.cardActor != null) {
-                    addSource(sa.cardActor);
+                    addCardDrag(sa.cardActor);
                     addSelectOnClick(sa.cardActor);
+                    addCardRightClick(sa.cardActor);
                 }
             }
         }
-        addTrayTarget(tray);
     }
 
-    // ---------------------------------------------------------------- 选中与信息框
+    private void addWindowDrag(WindowView view) {
+        view.addListener(new DragListener() {
+            private float startX, startY, actorX, actorY;
+            @Override
+            public void dragStart(InputEvent event, float x, float y, int pointer) {
+                // 记录拖拽初始位置，防止窗口跳动
+                startX = event.getStageX();
+                startY = event.getStageY();
+                actorX = view.getX();
+                actorY = view.getY();
+            }
+            @Override
+            public void drag(InputEvent event, float x, float y, int pointer) {
+                float dx = event.getStageX() - startX;
+                float dy = event.getStageY() - startY;
+                view.setPosition(actorX + dx, actorY + dy);
+                view.situation.x = view.getX();
+                view.situation.y = view.getY();
+            }
+        });
+    }
 
-    private void select(String kind, String id, InputEvent event) {
-        selKind = kind;
-        selId = id;
-        infoX = event.getStageX();
-        infoY = event.getStageY();
-        lastInfoTitle = null; // 强制刷新并重新定位
+    private void addCardDrag(CardActor actor) {
+        actor.addListener(new DragListener() {
+            private float offsetX, offsetY;
+            private boolean isDragging = false;
+
+            @Override
+            public void dragStart(InputEvent event, float x, float y, int pointer) {
+                if (actor.card.locked) return;
+                isDragging = true;
+                offsetX = x;
+                offsetY = y;
+                actor.toFront(); // 拖拽时置顶
+                hideInfo();
+            }
+
+            @Override
+            public void drag(InputEvent event, float x, float y, int pointer) {
+                if (!isDragging) return;
+                // 使用 Stage 坐标实时跟随鼠标，完美解决卡顿和偏移
+                Vector2 stage = new Vector2(event.getStageX(), event.getStageY());
+                worldGroup.stageToLocalCoordinates(stage);
+                actor.setPosition(stage.x - offsetX, stage.y - offsetY);
+            }
+
+            @Override
+            public void dragStop(InputEvent event, float x, float y, int pointer) {
+                if (!isDragging) return;
+                isDragging = false;
+
+                Vector2 stagePos = new Vector2(event.getStageX(), event.getStageY());
+                boolean droppedInSlot = false;
+
+                // 物理碰撞检测：鼠标松开的位置是否覆盖了某个 Slot
+                for (Actor child : worldGroup.getChildren()) {
+                    if (child instanceof WindowView wv) {
+                        for (SlotActor sa : wv.slotActors) {
+                            Vector2 local = sa.stageToLocalCoordinates(new Vector2(stagePos));
+                            if (local.x >= 0 && local.x <= sa.getWidth() && local.y >= 0 && local.y <= sa.getHeight()) {
+                                if (wv.situation.canPlace(sa.index, actor.card)) {
+                                    detach(actor.card);
+                                    wv.situation.placeCard(sa.index, actor.card);
+                                    droppedInSlot = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (droppedInSlot) break;
+                }
+
+                if (!droppedInSlot) {
+                    actor.card.x = actor.getX();
+                    actor.card.y = actor.getY();
+                }
+                dirty = true;
+            }
+        });
+    }
+
+    private void addCardRightClick(CardActor actor) {
+        actor.addListener(new ClickListener(Input.Buttons.RIGHT) {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                if (state.isInAnySlot(actor.card)) {
+                    detach(actor.card);
+                    dirty = true;
+                }
+                event.stop();
+            }
+        });
+    }
+
+    private void detach(ElementInstance card) {
+        for (Situation s : state.situations) {
+            for (int i = 0; i < s.slots.size(); i++) {
+                if (s.slots.get(i).content == card) {
+                    s.takeCard(i);
+                    return;
+                }
+            }
+        }
     }
 
     private void addSelectOnClick(CardActor actor) {
-        actor.addListener(new ClickListener() {
+        actor.addListener(new ClickListener(Input.Buttons.LEFT) {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 select(KIND_CARD, actor.card.instanceId, event);
@@ -188,18 +335,17 @@ public class GameScreen implements Screen {
     }
 
     private void addSelectOnClick(SlotActor actor) {
-        actor.addListener(new ClickListener() {
+        actor.addListener(new ClickListener(Input.Buttons.LEFT) {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                // 点在槽里的牌上时由牌自己处理;只有点在槽本身(空槽或边框)才选中槽
                 if (event.getTarget() != actor) return;
                 select(KIND_SLOT, actor.situation.slots.get(actor.index).id, event);
             }
         });
     }
 
-    private void addWindowClick(SituationView view) {
-        view.titleLabel.addListener(new ClickListener() {
+    private void addWindowClick(WindowView view) {
+        view.titleLabel.addListener(new ClickListener(Input.Buttons.LEFT) {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 select(KIND_WINDOW, view.situation.situationId, event);
@@ -207,33 +353,29 @@ public class GameScreen implements Screen {
         });
     }
 
+    private void select(String kind, String id, InputEvent event) {
+        selKind = kind;
+        selId = id;
+        infoX = event.getStageX();
+        infoY = event.getStageY();
+        lastInfoTitle = null;
+    }
+
     private void hideInfo() {
         selKind = null;
         selId = null;
-        lastInfoTitle = null;
-        lastInfoBody = null;
         infoPanel.setVisible(false);
     }
 
-    /** 每帧调用:内容(比如倒计时)变了才重新排版。 */
     private void refreshInfo() {
         if (selKind == null) return;
         String[] info;
         switch (selKind) {
-            case KIND_CARD:
-                info = cardInfo(selId);
-                break;
-            case KIND_SLOT:
-                info = slotInfo(selId);
-                break;
-            default:
-                info = windowInfo(selId);
-                break;
+            case KIND_CARD: info = cardInfo(selId); break;
+            case KIND_SLOT: info = slotInfo(selId); break;
+            default: info = windowInfo(selId); break;
         }
-        if (info == null) { // 被选中的东西已经不存在了(比如卡牌被消耗)
-            hideInfo();
-            return;
-        }
+        if (info == null) { hideInfo(); return; }
         if (!info[0].equals(lastInfoTitle) || !info[1].equals(lastInfoBody)) {
             infoPanel.show(info[0], info[1]);
             infoPanel.place(infoX, infoY, STAGE_W, STAGE_H);
@@ -248,13 +390,6 @@ public class GameScreen implements Screen {
         if (c == null) return null;
         String title = ui.texts.get("element." + c.def.id + ".name", c.def.id);
         StringBuilder body = new StringBuilder(ui.texts.get("element." + c.def.id + ".desc", ""));
-        if (!c.def.aspects.isEmpty()) {
-            body.append("\n\n").append(ui.texts.get("ui.aspects")).append(": ").append(aspectList(c.def.aspects));
-        }
-        if (c.def.lifetime > 0) {
-            body.append("\n").append(ui.texts.get("ui.lifetime")).append(": ")
-                    .append((int) Math.ceil(Math.max(0f, c.remaining))).append(ui.texts.get("ui.seconds"));
-        }
         return new String[] { title, body.toString() };
     }
 
@@ -262,44 +397,15 @@ public class GameScreen implements Screen {
         Slot s = findSlot(slotId);
         if (s == null) return null;
         String title = ui.texts.get("slot." + s.defId + ".name", s.defId);
-        StringBuilder body = new StringBuilder(ui.texts.get("slot." + s.defId + ".desc", ""));
-        body.append("\n\n");
-        if (state.library.hasVerb(s.defId)) {
-            body.append(ui.texts.get("ui.seed_hint"));      // 起始槽:放牌来开始
-        } else if (s.accepts.isEmpty()) {
-            body.append(ui.texts.get("ui.accepts_any"));
-        } else {
-            body.append(ui.texts.get("ui.accepts")).append(": ").append(aspectList(s.accepts));
-        }
-        return new String[] { title, body.toString() };
+        return new String[] { title, ui.texts.get("slot." + s.defId + ".desc", "") };
     }
 
     private String[] windowInfo(String situationId) {
         Situation s = findSituation(situationId);
         if (s == null) return null;
         EventDef e = s.running != null ? s.running : s.selected;
-        if (e == null) {
-            return new String[] {
-                ui.texts.get("slot." + s.verbId + ".name", s.verbId),
-                ui.texts.get("slot." + s.verbId + ".desc", "") + "\n\n" + ui.texts.get("ui.seed_hint")
-            };
-        }
-        StringBuilder body = new StringBuilder(ui.texts.get("event." + e.id + ".desc", ""));
-        if (s.running != null) {
-            body.append("\n\n").append(ui.texts.get("ui.remaining")).append(" ")
-                    .append((int) Math.ceil(Math.max(0f, s.timer))).append(" ").append(ui.texts.get("ui.seconds"));
-        }
-        return new String[] { ui.texts.get("event." + e.id + ".name", e.id), body.toString() };
-    }
-
-    /** 词条列表,如 "身体 x1, 精神 x2"。按 key 排序,显示顺序稳定。 */
-    private String aspectList(Map<String, Integer> aspects) {
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, Integer> e : new TreeMap<>(aspects).entrySet()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(ui.texts.get("aspect." + e.getKey() + ".name", e.getKey())).append(" x").append(e.getValue());
-        }
-        return sb.toString();
+        if (e == null) return new String[] { ui.texts.get("slot." + s.verbId + ".name", s.verbId), "" };
+        return new String[] { ui.texts.get("event." + e.id + ".name", e.id), ui.texts.get("event." + e.id + ".desc", "") };
     }
 
     private ElementInstance findCard(String instanceId) {
@@ -325,92 +431,19 @@ public class GameScreen implements Screen {
         return null;
     }
 
-    // ---------------------------------------------------------------- 拖拽
-
-    private void addSource(CardActor actor) {
-        dnd.addSource(new DragAndDrop.Source(actor) {
-            @Override
-            public DragAndDrop.Payload dragStart(InputEvent event, float x, float y, int pointer) {
-                if (actor.card.locked) return null; // 计时中的牌拖不动
-                grabX = x; // 按下位置相对于这张牌
-                grabY = y;
-                hideInfo();
-                DragAndDrop.Payload p = new DragAndDrop.Payload();
-                p.setObject(actor.card);
-                p.setDragActor(new CardActor(ui, actor.card));
-                return p;
-            }
-        });
-    }
-
-    private void addSlotTarget(SlotActor sa) {
-        dnd.addTarget(new DragAndDrop.Target(sa) {
-            @Override
-            public boolean drag(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-                ElementInstance card = (ElementInstance) payload.getObject();
-                Situation s = sa.situation;
-                // 起始牌不能拖进自己窗口的其他槽(取走起始牌会让那些槽消失)
-                if (s.slots.get(0).content == card) return false;
-                // 规则全部由引擎判断,界面不重复写
-                return s.canPlace(sa.index, card);
-            }
-
-            @Override
-            public void drop(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-                ElementInstance card = (ElementInstance) payload.getObject();
-                detach(card);
-                sa.situation.placeCard(sa.index, card);
-                dirty = true;
-            }
-        });
-    }
-
-    /** 托盘也是目标:把槽里的牌拖回桌面。 */
-    private void addTrayTarget(Table tray) {
-        dnd.addTarget(new DragAndDrop.Target(tray) {
-            @Override
-            public boolean drag(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-                ElementInstance card = (ElementInstance) payload.getObject();
-                return state.isInAnySlot(card) && !card.locked;
-            }
-
-            @Override
-            public void drop(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-                detach((ElementInstance) payload.getObject());
-                dirty = true;
-            }
-        });
-    }
-
-    /** 把牌从它当前所在的槽里取出来(如果在槽里的话)。取走起始牌会让那个窗口回到空闲。 */
-    private void detach(ElementInstance card) {
-        for (Situation s : state.situations) {
-            for (int i = 0; i < s.slots.size(); i++) {
-                if (s.slots.get(i).content == card) {
-                    s.takeCard(i);
-                    return;
-                }
-            }
-        }
-    }
-
-    // ---------------------------------------------------------------- 结局
-
     private void showEnding() {
         hideInfo();
         endingOverlay = new Table();
         endingOverlay.setFillParent(true);
         endingOverlay.setBackground(ui.rect(new Color(0f, 0f, 0f, 0.85f)));
-        endingOverlay.setTouchable(Touchable.enabled); // 挡住下面的操作
+        endingOverlay.setTouchable(Touchable.enabled);
         Label t = new Label(ui.texts.get("ending." + state.ending + ".name", state.ending), ui.labelStyle(Color.GOLD));
         Label b = new Label(ui.texts.get("ending." + state.ending + ".desc", ""), ui.labelStyle(Color.LIGHT_GRAY));
         b.setWrap(true);
         endingOverlay.add(t).row();
         endingOverlay.add(b).width(520).padTop(16);
-        stage.addActor(endingOverlay);
+        uiStage.addActor(endingOverlay);
     }
-
-    // ---------------------------------------------------------------- 主循环
 
     @Override
     public void render(float delta) {
@@ -420,29 +453,20 @@ public class GameScreen implements Screen {
 
         if (state.ending != null && endingOverlay == null) showEnding();
 
-        if (!dnd.isDragging() && (dirty || signature() != lastSignature)) {
+        if (dirty || signature() != lastSignature) {
             rebuild();
             lastSignature = signature();
             dirty = false;
         }
         refreshInfo();
 
-        // 被拖的牌:每帧按鼠标位置摆放,抓在哪里就保持在哪里(避免依赖 DragAndDrop 内部的偏移约定)
-        if (dnd.isDragging()) {
-            Actor a = dnd.getDragActor();
-            if (a != null) {
-                tmp.set(Gdx.input.getX(), Gdx.input.getY());
-                stage.screenToStageCoordinates(tmp);
-                a.setPosition(tmp.x - grabX, tmp.y - grabY);
-            }
-        }
-
         ScreenUtils.clear(0.06f, 0.05f, 0.08f, 1f);
-        stage.act(delta);
-        stage.draw();
+        worldStage.act(delta);
+        worldStage.draw();
+        uiStage.act(delta);
+        uiStage.draw();
     }
 
-    /** 轻量指纹:牌的集合、锁定状态、槽的数量与内容、运行状态有变化就会变。 */
     private int signature() {
         int h = state.cards.size();
         for (ElementInstance c : state.cards) {
@@ -459,22 +483,13 @@ public class GameScreen implements Screen {
         return h;
     }
 
-    @Override
-    public void show() {
-        Gdx.input.setInputProcessor(stage);
+    @Override public void show() {}
+    @Override public void resize(int width, int height) {
+        worldStage.getViewport().update(width, height, true);
+        uiStage.getViewport().update(width, height, true);
     }
-
-    @Override
-    public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true);
-    }
-
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-
-    @Override
-    public void dispose() {
-        stage.dispose();
-    }
+    @Override public void dispose() { worldStage.dispose(); uiStage.dispose(); }
 }

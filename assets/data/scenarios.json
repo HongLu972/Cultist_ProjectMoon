@@ -1,0 +1,10 @@
+[
+  {
+    "id": "ayin",
+    "cards": [
+      { "card": "carmen_invitation", "amount": 1 }
+    ],
+    "verbs": [ "work" ],
+    "autoEvents": [ ]
+  }
+]
