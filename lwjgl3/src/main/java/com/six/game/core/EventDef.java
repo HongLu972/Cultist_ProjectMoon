@@ -41,6 +41,8 @@ public class EventDef {
     /** 产物(JSON 里的 "products")。动作树里用 { "type": "produce" } 发放。 */
     public ArrayList<Product> products = new ArrayList<>();
 
+    public ArrayList<String> forceDrainAspects = new ArrayList<>();
+
     public static class Product {
         public String card;
         public int amount = 1;

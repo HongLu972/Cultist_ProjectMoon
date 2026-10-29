@@ -214,15 +214,26 @@ public class Situation {
 
     // 封装强制吸入逻辑，供 start 和 update 调用
     private void tryForceDrain() {
-        if (running == null || running.forceDrainAspect == null) return;
-        if (slots.isEmpty() || slots.get(0).content != null) return;
+        if (running == null || running.forceDrainAspects.isEmpty()) return;
 
-        for (ElementInstance c : state.cards) {
-            if (!c.locked && !state.isInAnySlot(c) && c.aspects().getOrDefault(running.forceDrainAspect, 0) > 0) {
-                slots.get(0).content = state.splitOne(c);
-                slots.get(0).content.locked = true;
-                break;
+        for (Slot slot : slots) {
+            if (slot.content != null) continue; // 找空槽
+
+            boolean found = false;
+            // 按照 JSON 里定义的优先级去吸
+            for (String aspect : running.forceDrainAspects) {
+                for (ElementInstance c : state.cards) {
+                    if (!c.locked && !state.isInAnySlot(c) && c.aspects().getOrDefault(aspect, 0) > 0) {
+                        slot.content = state.splitOne(c);
+                        slot.content.locked = true;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) break;
             }
+            // 如果一个都没吸到，就不用继续遍历其他槽了
+            if (!found) break;
         }
     }
 }

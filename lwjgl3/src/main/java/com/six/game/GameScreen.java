@@ -105,7 +105,7 @@ public class GameScreen implements Screen {
     }
 
     private void spawnTimeWindow() {
-        EventDef timeEvent = state.events.get("time");
+        EventDef timeEvent = state.events.get("time_A"); // 改这里
         if (timeEvent != null) {
             Situation s = state.openEventWindow(timeEvent, null, state.worldWidth - 400, state.worldHeight - 400);
             s.start();

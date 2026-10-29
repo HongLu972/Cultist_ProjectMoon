@@ -2,9 +2,10 @@
   {
     "id": "ayin",
     "cards": [
-      { "card": "carmen_invitation", "amount": 1 }
+      { "card": "carmen_invitation", "amount": 1 },
+      { "card": "despair", "amount": 1 }
     ],
-    "verbs": [ "work" ],
-    "autoEvents": [ ]
+    "verbs": [ "work", "study", "prepare" ],
+    "autoEvents": []
   }
 ]

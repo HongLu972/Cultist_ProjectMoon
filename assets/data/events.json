@@ -4,157 +4,224 @@
     "start": "manual",
     "slot": "work",
     "autoStart": true,
-    "time": 8,
+    "time": 2,
     "action": [
       { "type": "consume", "target": "carmen_invitation", "amount": 1 },
       { "type": "create", "target": "eye", "amount": 5 },
-      { "type": "unlock_verb", "verb": "study" },
-      { "type": "unlock_verb", "verb": "go_out" },
-      { "type": "create", "target": "cogito", "amount": 1 },
-      { "type": "create", "target": "part_time_job", "amount": 1 },
       { "type": "create", "target": "health", "amount": 1 },
       { "type": "create", "target": "reason", "amount": 2 },
-      { "type": "create", "target": "passion", "amount": 2 }
+      { "type": "create", "target": "hope", "amount": 3 },
+      { "type": "trigger", "event": "delta" },
+      { "type": "trigger", "event": "time_A" }
     ]
   },
   {
     "id": "work_basic",
     "start": "manual",
     "slot": "work",
-    "time": 10,
+    "time": 40,
     "input": { "body": 1 },
-    "slots": [
-      { "id": "work_extra" }
-    ],
     "action": [
-      { "type": "create", "target": "eye", "amount": 1 },
-      { "type": "check", "aspects": { "spirit": 1 },
-        "onSuccess": [
-          { "type": "consume", "target": "spirit", "amount": 1 },
-          { "type": "create", "target": "eye", "amount": 1 }
-        ]
-      },
-      { "type": "check", "aspects": { "mind": 1 },
-        "onSuccess": [
-          { "type": "chance", "percent": 30,
-            "onSuccess": [ { "type": "trigger", "event": "work_overtime" } ]
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "id": "work_overtime",
-    "start": "linked",
-    "slot": "none",
-    "time": 5,
-    "action": [
-      { "type": "create", "target": "eye", "amount": 1 },
-      { "type": "consume", "target": "mind", "amount": 1 }
+      { "type": "create", "target": "eye", "amount": 2 },
     ]
   },
   {
     "id": "study_basic",
     "start": "manual",
     "slot": "study",
-    "time": 15,
+    "time": 30,
     "input": { "mind": 1 },
-    "slots": [
-      { "id": "study_extra" }
-    ],
     "action": [
-      { "type": "create", "target": "insight", "amount": 1 },
-      { "type": "check", "aspects": { "light": 1 },
-        "onSuccess": [ { "type": "create", "target": "insight", "amount": 1 } ]
-      }
+      { "type": "create", "target": "hope", "amount": 1 }
     ]
   },
   {
-    "id": "go_out_basic",
+    "id": "prepare_defense",
     "start": "manual",
-    "slot": "go_out",
-    "time": 8,
-    "input": { "body": 1 },
-    "slots": [
-      { "id": "go_out_extra" }
-    ],
-    "action": [
-      { "type": "chance", "percent": 40,
-        "onSuccess": [ { "type": "create", "target": "passion", "amount": 1 } ]
-      }
-    ]
-  },
-  {
-    "id": "night_walk",
-    "start": "manual",
-    "slot": "go_out",
+    "slot": "prepare",
     "time": 12,
-    "input": { "light": 1 },
+    "input": { "money": 1 },
+    "action": [
+      { "type": "consume", "target": "money", "amount": 1 },
+      { "type": "create", "target": "readiness", "amount": 1 },
+      { "type": "create", "target": "evacuation", "amount": 1 }
+    ]
+  },
+  {
+    "id": "delta",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 30,
+    "action": [
+      { "type": "create", "target": "despair", "amount": 2 },
+      { "type": "trigger", "event": "delta" }
+    ]
+  },
+  {
+    "id": "time_A",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 15,
+    "forceDrainAspects": ["despair"],
+    "slots": [ { "id": "time_slot_A" } ],
+    "action": [
+      {
+        "type": "check", "aspects": { "despair": 1 },
+        "onSuccess": [ 
+          { "type": "consume", "target": "despair", "amount": 1 },
+          { "type": "trigger", "event": "time_B" } 
+        ],
+        "onFail": [ { "type": "trigger", "event": "time_A" } ]
+      }
+    ]
+  },
+  {
+    "id": "time_B",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 15,
+    "forceDrainAspects": ["hope", "despair"],
+    "slots": [ { "id": "time_slot_B" } ],
+    "action": [
+      {
+        "type": "check", "aspects": { "hope": 1 },
+        "onSuccess": [ 
+          { "type": "consume", "target": "hope", "amount": 1 },
+          { "type": "trigger", "event": "time_A" } 
+        ],
+        "onFail": [
+          {
+            "type": "check", "aspects": { "despair": 1 },
+            "onSuccess": [ 
+              { "type": "consume", "target": "despair", "amount": 1 },
+              { "type": "trigger", "event": "time_C" } 
+            ],
+            "onFail": [ { "type": "trigger", "event": "time_B" } ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "time_C",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 20,
+    "forceDrainAspects": ["hope", "despair"],
+    "slots": [ { "id": "time_slot_C" } ],
+    "action": [
+      {
+        "type": "check", "aspects": { "hope": 1 },
+        "onSuccess": [ 
+          { "type": "consume", "target": "hope", "amount": 1 },
+          { "type": "trigger", "event": "time_B" } 
+        ],
+        "onFail": [
+          {
+            "type": "check", "aspects": { "despair": 1 },
+            "onSuccess": [ 
+              { "type": "consume", "target": "despair", "amount": 1 },
+              { "type": "trigger", "event": "time_D" } 
+            ],
+            "onFail": [ { "type": "trigger", "event": "time_C" } ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "time_D",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 20,
+    "forceDrainAspects": ["hope", "despair"],
+    "slots": [ { "id": "time_slot_D" } ],
+    "action": [
+      {
+        "type": "check", "aspects": { "hope": 1 },
+        "onSuccess": [ 
+          { "type": "consume", "target": "hope", "amount": 1 },
+          { "type": "trigger", "event": "time_C" } 
+        ],
+        "onFail": [
+          {
+            "type": "check", "aspects": { "despair": 1 },
+            "onSuccess": [ 
+              { "type": "consume", "target": "despair", "amount": 1 },
+              { "type": "trigger", "event": "time_E" } 
+            ],
+            "onFail": [ { "type": "trigger", "event": "time_D" } ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "time_E",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 20,
+    "forceDrainAspects": ["hope", "despair"],
+    "slots": [ { "id": "time_slot_E" } ],
+    "action": [
+      {
+        "type": "check", "aspects": { "hope": 1 },
+        "onSuccess": [ 
+          { "type": "consume", "target": "hope", "amount": 1 },
+          { "type": "trigger", "event": "time_D" } 
+        ],
+        "onFail": [
+          {
+            "type": "check", "aspects": { "despair": 1 },
+            "onSuccess": [ 
+              { "type": "consume", "target": "despair", "amount": 1 },
+              { "type": "trigger", "event": "time_F" } 
+            ],
+            "onFail": [ { "type": "trigger", "event": "time_E" } ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "time_F",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 45,
+    "forceDrainAspects": ["readiness", "evacuation"],
     "slots": [
-      { "id": "night_extra" }
+      { "id": "f_slot_1" }, { "id": "f_slot_2" }, { "id": "f_slot_3" },
+      { "id": "f_slot_4" }, { "id": "f_slot_5" }, { "id": "f_slot_6" },
+      { "id": "f_slot_7" }, { "id": "f_slot_8" }, { "id": "f_slot_9" },
+      { "id": "f_slot_10" }, { "id": "f_slot_11" }, { "id": "f_slot_12" },
+      { "id": "f_slot_13" }, { "id": "f_slot_14" }, { "id": "f_slot_15" },
+      { "id": "f_slot_16" }, { "id": "f_slot_17" }, { "id": "f_slot_18" }
     ],
     "action": [
-      { "type": "produce" }
-    ],
-    "products": [
-      { "card": "insight", "amount": 1 }
-    ]
-  },
-  {
-    "id": "part_time",
-    "start": "manual",
-    "slot": "none",
-    "time": 40,
-    "action": [
-      { "type": "chance", "percent": 100,
-        "onSuccess": [ { "type": "create", "target": "eye", "amount": 1 } ]
-      }
-    ]
-  },
-  {
-    "id": "time",
-    "start": "manual",
-    "slot": "none",
-    "autoStart": true,
-    "time": 60,
-    "forceDrainAspect": "money",
-    "slots": [ { "id": "time_slot" } ],
-    "action": [
-      { 
-        "type": "check", "aspects": { "money": 1 },
-        "onSuccess": [
-          { "type": "consume", "target": "money", "amount": 1 }
-        ],
+      {
+        "type": "check", "aspects": { "readiness": 8, "evacuation": 8 },
+        "onSuccess": [ { "type": "end_game", "ending": "he_mirror" } ],
         "onFail": [
-          { "type": "trigger", "event": "time_1" }
-        ]
-      },
-      { "type": "trigger", "event": "time" }
-    ]
-  },
-  {
-    "id": "time_1",
-    "start": "manual",
-    "slot": "none",
-    "autoStart": true,
-    "time": 60,
-    "forceDrainAspect": "body",
-    "slots": [ { "id": "time_slot_1" } ],
-    "action": [
-      { 
-        "type": "check", "aspects": { "body": 1 },
-        "onSuccess": [
-          { "type": "consume", "target": "body", "amount": 1 },
-          { "type": "produce" },
-          { "type": "trigger", "event": "time" }
-        ],
-        "onFail": [
-          { "type": "end_game", "ending": "poverty" }
+          {
+            "type": "check", "aspects": { "readiness": 8 },
+            "onSuccess": [ { "type": "end_game", "ending": "te_underlight" } ],
+            "onFail": [
+              {
+                "type": "check", "aspects": { "evidence": 1 },
+                "onSuccess": [ { "type": "end_game", "ending": "ge_names" } ],
+                "onFail": [ { "type": "end_game", "ending": "be_cannot_continue" } ]
+              }
+            ]
+          }
         ]
       }
-    ],
-    "products": [
-      { "card": "disease_flu", "amount": 1 }
     ]
   }
 ]

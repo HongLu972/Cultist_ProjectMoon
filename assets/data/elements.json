@@ -1,65 +1,16 @@
 [
-  {
-    "id": "carmen_invitation",
-    "aspects": { "invitation": 1 },
-    "triggers": [
-      { "slot": "work", "event": "first_work" }
-    ]
+  { "id": "carmen_invitation", "aspects": { "invitation": 1 }, "triggers": [ { "slot": "work", "event": "first_work" } ] },
+  { 
+    "id": "eye", "stackable": true, "aspects": { "money": 1 },
+    "triggers": [ { "slot": "prepare", "event": "prepare_defense" } ]
   },
-  {
-    "id": "eye",
-    "stackable": true,
-    "aspects": { "money": 1 }
-  },
-  {
-    "id": "health",
-    "image": "img/cards/health.png",
-    "stackable": true,
-    "aspects": { "body": 1 },
-    "triggers": [
-      { "slot": "work",   "event": "work_basic" },
-      { "slot": "go_out", "event": "go_out_basic" }
-    ]
-  },
-  {
-    "id": "reason",
-    "stackable": true,
-    "aspects": { "mind": 1 },
-    "triggers": [
-      { "slot": "study", "event": "study_basic" }
-    ]
-  },
-  {
-    "id": "passion",
-    "stackable": true,
-    "aspects": { "spirit": 1 }
-  },
-  {
-    "id": "cogito",
-    "aspects": { "cogito": 1 }
-  },
-  {
-    "id": "part_time_job",
-    "aspects": { "opportunity": 1 },
-    "triggers": [
-      { "slot": "use", "event": "part_time" }
-    ]
-  },
-  {
-    "id": "lantern",
-    "aspects": { "light": 1 },
-    "triggers": [
-      { "slot": "go_out", "event": "night_walk" }
-    ]
-  },
-  {
-    "id": "insight",
-    "stackable": true,
-    "aspects": { "knowledge": 1 }
-  },
-  {
-    "id": "disease_flu",
-    "aspects": { "sickness": 1 },
-    "lifetime": 90
-  }
+  { "id": "health", "stackable": true, "aspects": { "body": 1 }, "triggers": [ { "slot": "work", "event": "work_basic" } ] },
+  { "id": "reason", "stackable": true, "aspects": { "mind": 1 }, "triggers": [ { "slot": "study", "event": "study_basic" } ] },
+  { "id": "passion", "stackable": true, "aspects": { "spirit": 1 } },
+  { "id": "hope", "stackable": true, "aspects": { "hope": 1 } },
+  { "id": "despair", "stackable": true, "aspects": { "despair": 1 } },
+  { "id": "readiness", "stackable": true, "aspects": { "readiness": 1 } },
+  { "id": "evacuation", "stackable": true, "aspects": { "evacuation": 1 } },
+  { "id": "evidence", "stackable": true, "aspects": { "evidence": 1 } },
+  { "id": "disease_flu", "aspects": { "sickness": 1 }, "lifetime": 90 }
 ]

@@ -1,3 +1,7 @@
 [
+  { "id": "te_underlight", "type": "TE" },
+  { "id": "he_mirror", "type": "HE" },
+  { "id": "be_cannot_continue", "type": "BE" },
+  { "id": "ge_names", "type": "GE" },
   { "id": "poverty", "type": "BE" }
 ]
