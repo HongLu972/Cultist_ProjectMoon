@@ -27,6 +27,10 @@ Useful Gradle tasks and flags:
 - `idea`: generates IntelliJ project data.
 - `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
 - `lwjgl3:run`: starts the application.
+- `test`: runs unit tests (if any).
+
+Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
+For example, `core:clean` removes `build` folder only from the `core` project.
 
 #  (Cultist_ProjectMoon) API 文档 v1.0
 
@@ -242,7 +246,3 @@ Useful Gradle tasks and flags:
 *文档生成于：Angela 研究所开发组。祝你在暗无天日的夜里写模组剧情愉快。* 
 
 *“我真的活过那50天了么？”*
-- `test`: runs unit tests (if any).
-
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
