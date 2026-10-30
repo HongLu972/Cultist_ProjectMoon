@@ -1,4 +1,4 @@
-package game;
+package game; // 如果你的包名是 com.six.game，请改为 package com.six.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -12,6 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
@@ -56,15 +57,25 @@ public class GameScreen implements Screen {
     private int lastSignature;
     private float grabX = CardActor.W / 2f, grabY = CardActor.H / 2f;
 
-    public GameScreen(Ui ui, GameState state, float[] speeds, boolean loadSave) {
+    // 存档与暂停系统
+    private final String saveSlot;
+    private final Runnable onExitToMenu;
+    private Table pauseMenu;
+    private boolean isPaused = false;
+    private Label volumeLabel;
+
+    public GameScreen(Ui ui, GameState state, float[] speeds, String loadSaveSlot, Runnable onExitToMenu) {
         this.ui = ui;
         this.state = state;
+        this.saveSlot = loadSaveSlot == null ? "save_1.json" : loadSaveSlot;
+        this.onExitToMenu = onExitToMenu;
+
         this.infoPanel = new InfoPanel(ui);
         this.logPanel = new LogPanel(ui);
-        this.pausedLabel = new Label(ui.texts.get("ui.paused"), ui.labelStyle(Color.SALMON));
+        this.pausedLabel = new Label(ui.texts.get("ui.paused", "已暂停"), ui.labelStyle(Color.SALMON));
         this.pausedLabel.setVisible(false);
-        buildSpeedBar(speeds);
 
+        buildSpeedBar(speeds);
         dnd.setKeepWithinStage(false);
 
         worldGroup.setSize(state.worldWidth, state.worldHeight);
@@ -81,11 +92,12 @@ public class GameScreen implements Screen {
         uiStage.addActor(infoPanel);
         infoPanel.setVisible(false);
 
-        InputMultiplexer multiplexer = new InputMultiplexer(uiStage, worldStage);
-        Gdx.input.setInputProcessor(multiplexer);
-
+        setupPauseMenu();
         setupWorldInput();
         setupGlobalDropTarget();
+
+        InputMultiplexer multiplexer = new InputMultiplexer(uiStage, worldStage);
+        Gdx.input.setInputProcessor(multiplexer);
 
         state.addListener((situation, event) -> {
             String key = "event." + event.id + ".result";
@@ -93,20 +105,122 @@ public class GameScreen implements Screen {
             state.chronicle.addRecord(state.totalTime, "结算事件: " + ui.texts.get("event." + event.id + ".name", event.id));
         });
 
+        // 全局按键监听 (Esc, F5, F9)
         uiStage.addListener(new InputListener() {
             @Override
             public boolean keyDown(InputEvent event, int keycode) {
-                if (keycode == Input.Keys.F5) { saveGame(); return true; }
-                if (keycode == Input.Keys.F9) { loadGame(); return true; }
+                if (keycode == Input.Keys.ESCAPE) {
+                    togglePause();
+                    return true;
+                }
+                if (keycode == Input.Keys.F5) {
+                    saveGame();
+                    return true;
+                }
+                if (keycode == Input.Keys.F9) {
+                    loadGame();
+                    return true;
+                }
                 return false;
             }
         });
 
-        if (loadSave) {
+        // 启动逻辑
+        if (loadSaveSlot != null) {
             loadGame();
         } else {
             spawnTimeWindow();
             state.chronicle.addRecord(0, "研究所正式启动。");
+            AudioManager.getInstance().playBgm("audio/bgm_game.wav");
+        }
+    }
+
+    private void togglePause() {
+        isPaused = !isPaused;
+        clock.paused = isPaused;
+        pauseMenu.setVisible(isPaused);
+        if (isPaused) pauseMenu.toFront();
+        pausedLabel.setVisible(isPaused);
+    }
+
+    private void setupPauseMenu() {
+        pauseMenu = new Table();
+        pauseMenu.setFillParent(true);
+        pauseMenu.setBackground(ui.rect(new Color(0f, 0f, 0f, 0.85f)));
+        pauseMenu.setVisible(false);
+        pauseMenu.setTouchable(Touchable.enabled);
+
+        Table window = new Table();
+        window.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
+        window.pad(20);
+
+        window.add(new Label("暂停 / 设置", ui.labelStyle(Color.GOLD))).padBottom(20).row();
+
+        TextButton saveBtn = new TextButton("保存到 " + saveSlot, ui.buttonStyle());
+        saveBtn.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) { saveGame(); }
+        });
+        window.add(saveBtn).width(250).height(50).padBottom(10).row();
+
+        TextButton loadBtn = new TextButton("从存档读取", ui.buttonStyle());
+        loadBtn.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) { loadGame(); }
+        });
+        window.add(loadBtn).width(250).height(50).padBottom(10).row();
+
+        // 音量控制
+        Table volRow = new Table();
+        volumeLabel = new Label("音量: " + (int)(AudioManager.getInstance().getVolume()*100) + "%", ui.labelStyle(Color.WHITE));
+        volRow.add(volumeLabel).width(150);
+        TextButton volDown = new TextButton("-", ui.buttonStyle());
+        TextButton volUp = new TextButton("+", ui.buttonStyle());
+
+        volDown.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent e, Actor a) {
+                AudioManager.getInstance().setVolume(AudioManager.getInstance().getVolume() - 0.1f);
+                volumeLabel.setText("音量: " + (int)(AudioManager.getInstance().getVolume()*100) + "%");
+            }
+        });
+        volUp.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent e, Actor a) {
+                AudioManager.getInstance().setVolume(AudioManager.getInstance().getVolume() + 0.1f);
+                volumeLabel.setText("音量: " + (int)(AudioManager.getInstance().getVolume()*100) + "%");
+            }
+        });
+        volRow.add(volDown).size(40).padLeft(10);
+        volRow.add(volUp).size(40).padLeft(5);
+        window.add(volRow).padBottom(20).row();
+
+        TextButton menuBtn = new TextButton("保存并回到主菜单", ui.buttonStyle());
+        menuBtn.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent e, Actor a) {
+                saveGame();
+                onExitToMenu.run();
+            }
+        });
+        window.add(menuBtn).width(250).height(50).row();
+
+        pauseMenu.add(window);
+        uiStage.addActor(pauseMenu);
+    }
+
+    private void saveGame() {
+        SaveData data = state.createSaveData();
+        String json = new Json().toJson(data);
+        Gdx.files.local(saveSlot).writeString(json, false);
+        logPanel.add("【系统】已存档至 " + saveSlot, ui);
+    }
+
+    private void loadGame() {
+        if (!Gdx.files.local(saveSlot).exists()) return;
+        String json = Gdx.files.local(saveSlot).readString();
+        SaveData data = new Json().fromJson(SaveData.class, json);
+        state.loadFromSave(data);
+        dirty = true;
+        logPanel.add("【系统】从 " + saveSlot + " 读档成功", ui);
+        if (state.ending != null) {
+            EndingDef def = state.library.ending(state.ending);
+            ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(new EndingScreen(ui, state, def));
         }
     }
 
@@ -206,7 +320,6 @@ public class GameScreen implements Screen {
             public void drop(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
                 ElementInstance card = (ElementInstance) payload.getObject();
                 detach(card);
-                // 直接用相对背景的坐标
                 card.x = x - grabX;
                 card.y = y - grabY;
                 dirty = true;
@@ -276,7 +389,6 @@ public class GameScreen implements Screen {
         });
     }
 
-    // --- 核心修复：回归 DragAndDrop 的虚影机制 ---
     private void addSource(CardActor actor) {
         dnd.addSource(new DragAndDrop.Source(actor) {
             @Override
@@ -287,8 +399,8 @@ public class GameScreen implements Screen {
                 hideInfo();
                 DragAndDrop.Payload p = new DragAndDrop.Payload();
                 p.setObject(actor.card);
-                p.setDragActor(new CardActor(ui, actor.card)); // 创建虚影
-                actor.setVisible(false); // 隐藏原卡
+                p.setDragActor(new CardActor(ui, actor.card));
+                actor.setVisible(false);
                 return p;
             }
 
@@ -317,7 +429,6 @@ public class GameScreen implements Screen {
             }
         });
     }
-    // ---------------------------------------------
 
     private void addCardRightClick(CardActor actor) {
         actor.addListener(new ClickListener(Input.Buttons.RIGHT) {
@@ -442,31 +553,11 @@ public class GameScreen implements Screen {
         return null;
     }
 
-    private void saveGame() {
-        SaveData data = state.createSaveData();
-        String json = new Json().toJson(data);
-        Gdx.files.local("savegame.json").writeString(json, false);
-        logPanel.add("【系统】存档成功 (F5)", ui);
-    }
-
-    private void loadGame() {
-        if (!Gdx.files.local("savegame.json").exists()) return;
-        String json = Gdx.files.local("savegame.json").readString();
-        SaveData data = new Json().fromJson(SaveData.class, json);
-        state.loadFromSave(data);
-        dirty = true;
-        logPanel.add("【系统】读档成功 (F9)", ui);
-        if (state.ending != null) {
-            EndingDef def = state.library.ending(state.ending);
-            ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(new EndingScreen(ui, state, def));
-        }
-    }
-
     @Override
     public void render(float delta) {
-        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) clock.paused = !clock.paused;
-        pausedLabel.setVisible(clock.paused);
-        clock.update(delta, state);
+        if (!isPaused) {
+            clock.update(delta, state);
+        }
 
         if (state.ending != null) {
             EndingDef def = state.library.ending(state.ending);
@@ -481,7 +572,6 @@ public class GameScreen implements Screen {
         }
         refreshInfo();
 
-        // DND 虚影完美跟随鼠标
         if (dnd.isDragging()) {
             Actor a = dnd.getDragActor();
             if (a != null) {

@@ -10,6 +10,7 @@ import java.util.Map;
 public class ElementInstance {
     public final String instanceId;
     public final Element def;
+    public String tempSaveId; // 临时存储，用于存读档时关联槽位
     public int count = 1;
     /** 事件计时中,槽里的牌被锁定,不能拖走,也不会被"吸走"。 */
     public boolean locked;

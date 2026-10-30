@@ -31,6 +31,7 @@ public class ContentLoader {
         json.addClassTag("end_game", Actions.EndGame.class);
         json.addClassTag("chance", Actions.Chance.class);
         json.addClassTag("check", Actions.Check.class);
+        json.addClassTag("play_music", Actions.PlayMusic.class);
 
         // 多数情况下 LibGDX 能从泛型读出元素类型,显式声明一遍更保险。
         json.setElementType(Element.class, "aspects", Integer.class);

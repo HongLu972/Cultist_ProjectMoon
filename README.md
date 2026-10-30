@@ -1,73 +1,26 @@
-# Cultist-gamr
+# 月计模拟器数据与系统 API 文档 v1.1
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
-
-This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
-
-## Platforms
-
-- `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
-
-## Gradle
-
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
-
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
-
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
-
-#  (Cultist_ProjectMoon) API 文档 v1.0
-
-本游戏采用**纯数据驱动（Data-Driven）**架构。所有卡牌、事件、结局、开局逻辑均通过 JSON 文件配置。只要遵循本 API 规范，无需修改 Java 代码即可无限扩展游戏内容，制作属于你自己的剧本（Mod）。
+本游戏采用**纯数据驱动（Data-Driven）**架构。通过修改 JSON 文件，你可以完全重写剧情、修改数值、增加卡牌、乃至制作大型剧情 Mod，而无需改动任何 Java 代码。
 
 ## 📂 文件目录结构约定
-
-所有的数据文件位于 `assets/data/` 目录下：
-
-- `config.json`：全局配置
-- `elements.json`：卡牌定义
-- `verbs.json`：行动（窗口）定义
-- `events.json`：事件与动作树定义
-- `endings.json`：结局定义
-- `scenarios.json`：开局定义
-- `text_zh.json` / `text_en.json`：本地化文本映射
+*   `assets/data/`：核心数据（卡牌、事件、文本）
+*   `assets/audio/`：音频文件（建议使用 `.wav` 或 `.ogg`，**千万不要用 MP3**，LibGDX 对 MP3 兼容性极差）
+*   `mods/`：外部模组文件夹（与游戏根目录同级，用于覆盖或增加内容）
 
 ---
 
-## ⚙️ 1. config.json (全局配置)
-
-定义游戏的基础参数。
-
-| 字段          | 类型           | 必填 | 说明                                               |
-| :------------ | :------------- | :--- | :------------------------------------------------- |
-| `language`    | String         | 是   | 默认语言代码，如 `"zh"`。                          |
-| `speeds`      | Array\<Float\> | 是   | 右上角倍速控制面板的档位，如 `[0.75, 1, 1.5, 2]`。 |
-| `worldWidth`  | Float          | 是   | 世界地图的宽度（像素）。                           |
-| `worldHeight` | Float          | 是   | 世界地图的高度（像素）。                           |
+## ⚙️ 1. 基础配置 (config.json)
+| 字段 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `language` | String | 是 | 默认语言代码，如 `"zh"`。 |
+| `speeds` | Array | 是 | 右上角倍速控制面板的档位，如 `[0.75, 1, 1.5, 2]`。 |
+| `worldWidth` | Float | 是 | 世界地图的宽度（像素）。 |
+| `worldHeight`| Float | 是 | 世界地图的高度（像素）。 |
 
 ---
 
-## 🃏 2. elements.json (卡牌定义)
-
-定义玩家可以拖动、消耗、获取的所有卡牌。
-
-**数据结构示例：**
+## 🃏 2. 卡牌定义 (elements.json)
+定义玩家可以拖动、消耗、获取的所有卡牌。**卡牌的 ID 默认视作它自带的一个隐式词条（Aspect）。**
 
 ```json
 [
@@ -85,44 +38,31 @@ For example, `core:clean` removes `build` folder only from the `core` project.
   }
 ]
 ```
-
-| 字段             | 类型    | 必填 | 说明                                                         |
-| :--------------- | :------ | :--- | :----------------------------------------------------------- |
-| `id`             | String  | 是   | 全局唯一 ID。**卡牌的 ID 默认视作它自带的一个隐式词条。**    |
-| `image`          | String  | 否   | 卡面图片相对路径。不填则显示纯色底。                         |
-| `aspects`        | Object  | 否   | 词条（属性）键值对，如 `{"mind": 2}`。                       |
-| `lifetime`       | Float   | 否   | 寿命（秒）。不填或填 `-1` 表示永久。到期后触发衰变。         |
-| `decayTo`        | String  | 否   | 寿命到期后变成哪张卡。不填则直接消失。                       |
-| `stackable`      | Boolean | 否   | 是否可堆叠。如果为 `true`，同种卡牌在桌面上会合并成一叠。    |
-| `triggers`       | Array   | 否   | 触发规则列表。                                               |
-| `triggers.slot`  | String  | 是   | 行动 ID（如 `"work"`），或者特殊值 `"use"`（表示双击使用）。 |
-| `triggers.event` | String  | 是   | 触发的事件 ID。该事件必须是 `start: "manual"` 类型。         |
+| 字段 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `id` | String | 全局唯一 ID。 |
+| `image` | String | (可选) 卡面图片相对路径。 |
+| `aspects` | Object | (可选) 词条键值对。 |
+| `lifetime` | Float | (可选) 寿命（秒）。不填或填 `-1` 表示永久。 |
+| `decayTo` | String | (可选) 寿命到期后变成哪张卡。不填则消失。 |
+| `stackable` | Boolean | (可选) 是否可堆叠合并。 |
+| `triggers` | Array | (可选) 触发规则。`slot` 填行动 ID 或 `"use"` (双击使用)，`event` 填事件 ID。 |
 
 ---
 
-## 🪟 3. verbs.json (行动/窗口定义)
-
-定义玩家可用的常驻行动窗口。这些窗口开局时被解锁。
+## 🪟 3. 行动窗口 (verbs.json)
+定义玩家可用的常驻行动窗口（开局解锁）。
 
 ```json
-[
-  { "id": "work" },
-  { "id": "study" }
-]
+[ { "id": "work" }, { "id": "study" } ]
 ```
-
-| 字段 | 类型   | 必填 | 说明                                               |
-| :--- | :----- | :--- | :------------------------------------------------- |
-| `id` | String | 是   | 全局唯一 ID。它同时也是该行动“起始槽位”的默认 ID。 |
 
 ---
 
-## 🎬 4. events.json (事件与动作树)
-
-游戏的心脏。负责所有的逻辑运转。
+## 🎬 4. 事件系统 (events.json)
+游戏的心脏。包含事件本体、时间轴、强制吸入与动作树。
 
 ### 4.1 事件主体结构
-
 ```json
 [
   {
@@ -130,78 +70,78 @@ For example, `core:clean` removes `build` folder only from the `core` project.
     "start": "manual",
     "slot": "none",
     "autoStart": true,
-    "time": 60.0,
-    "forceDrainAspect": "money",
-    "input": { "mind": 1 },
-    "slots": [ { "id": "time_slot", "accepts": {"money": 1}, "required": true } ],
-    "action": [ 
-      { 
-        "type": "check", 
-        "aspects": { "money": 1 },
-        "onSuccess": [ { "type": "consume", "target": "money", "amount": 1 } ],
-        "onFail": [ { "type": "trigger", "event": "time_1" } ]
-      },
-      { "type": "trigger", "event": "time" }
-    ],
+    "time": 30.0,
+    "forceDrainAspects": ["hope", "despair"],
+    "slots": [ { "id": "time_slot", "required": true } ],
+    "action": [ ...动作树... ],
     "products": [ { "card": "eye", "amount": 1 } ]
   }
 ]
 ```
-
-| 字段               | 类型    | 必填 | 说明                                                         |
-| :----------------- | :------ | :--- | :----------------------------------------------------------- |
-| `id`               | String  | 是   | 全局唯一事件 ID。                                            |
-| `start`            | String  | 是   | 启动方式：<br>`manual`: 玩家放牌手动/自动触发。<br>`auto`: 纯后台静默循环。<br>`linked`: 只能被其他事件触发。 |
-| `slot`             | String  | 是   | 占用的行动槽 ID。特殊值 `"none"` 表示**不占用常驻槽位**，会自己开一个独立的事件窗口。`auto` 和 `linked` 事件必须是 `"none"`。 |
-| `autoStart`        | Boolean | 否   | 仅 `manual` 可用。满足条件后自动开始，不需要点击“开始”按钮。 |
-| `time`             | Float   | 是   | 持续时间（秒）。`linked` 填 0 表示立刻结算。                 |
-| `forceDrainAspect` | String  | 否   | **强制吸入**。事件运行期间，只要场上出现带有该词条且未锁定的卡牌，就会在每一帧检测并强制将它吸入第一个空槽。 |
-| `input`            | Object  | 否   | 启动所需的词条门槛，如 `{"body": 1}`。                       |
-| `slots`            | Array   | 否   | 事件额外生成的槽位列表。<br>`id`: 槽位唯一 ID（**全局不可重复**）。<br>`accepts`: 接受的词条。<br>`required`: 是否必填。 |
-| `action`           | Array   | 否   | 结算时执行的动作树（见 4.2）。                               |
-| `products`         | Array   | 否   | 产物列表。配合 `{"type": "produce"}` 节点发放。<br>`card`: 卡牌 ID。<br>`amount`: 数量。 |
+| 字段 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `id` | String | 全局唯一事件 ID。 |
+| `start` | String | 启动方式：<br>`manual`: 玩家放牌触发。<br>`auto`: 后台静默循环。<br>`linked`: 只能被其他事件触发。 |
+| `slot` | String | 占用的行动槽 ID。填 `"none"` 表示开一个独立的事件窗口。`auto` 和 `linked` 事件必须是 `"none"`。 |
+| `autoStart`| Boolean | (可选) 仅 `manual` 可用。满足条件后自动开始，不用点“开始”。 |
+| `time` | Float | 持续时间（秒）。 |
+| `forceDrainAspects` | Array | (可选) **按优先级强制吸入**。事件运行期间，只要场上有该词条的未锁定卡牌，且自身槽位为空，就会被强行吸进去（如 `["hope", "despair"]` 优先吸希望，没有再吸绝望）。 |
+| `input` | Object | (可选) 启动所需的词条门槛，如 `{"body": 1}`。 |
+| `slots` | Array | (可选) 事件额外生成的槽位列表。`id`: 唯一 ID；`accepts`: 接受的词条；`required`: 是否必填。 |
+| `action` | Array | (可选) 结算时执行的动作树。 |
+| `products` | Array | (可选) 产物列表。配合 `{"type": "produce"}` 节点发放。 |
 
 ### 4.2 动作树节点 (Action)
-
 动作树由多个节点组成，每个节点执行后必定返回“成功”或“失败”，然后分别执行对应的子节点。所有节点都支持 `"onSuccess": [...]` 和 `"onFail": [...]`。
 
 #### 基础效果
-
-- `{"type": "create", "target": "eye", "amount": 1}`：在桌面上生成卡牌。永远成功。
-- `{"type": "consume", "target": "money", "amount": 1}`：从当前**窗口槽位**里吃掉带目标词条的卡。不够吃则失败，且一张都不吃。
-- `{"type": "drain", "target": "health", "amount": 1}`：从**整个桌面**吸走带目标词条的牌（未被锁定的）。不够吸则失败。
-- `{"type": "produce"}`：发放事件 `products` 列表里的所有产物。永远成功。
+*   `{"type": "create", "target": "eye", "amount": 1}`：在桌面上生成卡牌。永远成功。
+*   `{"type": "consume", "target": "money", "amount": 1}`：从当前**窗口槽位**里吃掉带目标词条的卡。不够吃则失败。
+*   `{"type": "drain", "target": "health", "amount": 1}`：从**整个桌面**吸走带目标词条的牌（未锁定）。不够吸则失败。
+*   `{"type": "produce"}`：发放事件 `products` 列表里的所有产物。
 
 #### 控制流
-
-- `{"type": "check", "aspects": {"mind": 1}}`：检查当前窗口/桌面的词条总数是否满足条件。
-- `{"type": "chance", "percent": 50}`：抛硬币，按百分比概率判定成功。
-- `{"type": "trigger", "event": "next_event"}`：触发另一个事件。若在窗口内则链式推进；否则开新窗口。
-- `{"type": "end_game", "ending": "poverty"}`：立刻结束游戏，进入指定结局。
+*   `{"type": "check", "aspects": {"mind": 1}}`：检查当前窗口/桌面的词条总数是否满足条件。
+*   `{"type": "chance", "percent": 50}`：抛硬币，按百分比概率判定成功。
+*   `{"type": "trigger", "event": "next_event"}`：触发另一个事件。
+*   `{"type": "end_game", "ending": "poverty"}`：立刻结束游戏，进入指定结局。
 
 #### 系统指令
-
-- `{"type": "unlock_verb", "verb": "study"}`：解锁一个新的常驻行动窗口。
-- `{"type": "start_auto", "event": "time"}`：启动一个 `auto` 类型的后台循环事件（注：当前版本由于时间流逝逻辑特殊，通常由代码接管，此项一般不用）。
+*   `{"type": "unlock_verb", "verb": "study"}`：解锁一个新的常驻行动窗口。
+*   `{"type": "play_music", "track": "audio/bgm_boss.ogg"}`：无缝切换背景音乐。
 
 ---
 
-## 🪦 5. endings.json (结局定义)
+## 🪦 5. 结局系统 (endings.json)
+=={可能存在大量BUG}==
+定义了游戏的各种结局及**“清算字幕”**。
 
 ```json
-[ { "id": "poverty", "type": "BE" } ]
+[
+  {
+    "id": "te_underlight",
+    "type": "TE",
+    "review": {
+      "duration": 16.0,
+      "subtitles": [
+        { "time": 0.0, "text": "火光与浓烟散去。" },
+        { "time": 4.0, "text": "你身边是 {casualty} 具再也无法醒来的冰冷躯体。" }
+      ]
+    }
+  }
+]
 ```
-
-| 字段   | 类型   | 说明                                                         |
-| :----- | :----- | :----------------------------------------------------------- |
-| `id`   | String | 结局唯一 ID。                                                |
-| `type` | String | 结局类型（如 `BE` 坏结局, `GE` 好结局, `TE` 真结局）。用于 UI 分类显示。 |
+| 字段 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `id` | String | 结局唯一 ID。 |
+| `type` | String | 结局类型（`BE`, `GE`, `TE`, `HE`）。 |
+| `review.duration`| Float | 清算动画的总时长（秒）。 |
+| `review.subtitles`| Array | 字幕时间轴。`time`：出现时间，`text`：文字。<br>**支持动态变量替换**（如 `{casualty}` 会被替换为实际伤亡卡牌数量，`{evidence}` 为证据数量）。 |
 
 ---
 
-## 🚩 6. scenarios.json (开局定义)
-
-玩家在选择界面看到的选项。
+## 🚩 6. 开局系统 (scenarios.json)
+玩家在新游戏界面看到的选项。
 
 ```json
 [
@@ -214,35 +154,38 @@ For example, `core:clean` removes `build` folder only from the `core` project.
 ]
 ```
 
-| 字段         | 类型   | 说明                                     |
-| :----------- | :----- | :--------------------------------------- |
-| `id`         | String | 开局唯一 ID。                            |
-| `cards`      | Array  | 开局赠送的卡牌。                         |
-| `verbs`      | Array  | 开局默认解锁的行动 ID。                  |
-| `autoEvents` | Array  | 开局自动启动的 `auto` 事件（通常留空）。 |
-
 ---
 
-## 🌐 7. 文本本地化 (text_zh.json / text_en.json)
-
+## 🌐 7. 本地化文本 (text_zh.json / text_en.json)
 > [!WARNING]  
-> **极其重要**：所有在 UI 上显示的文字，**严禁**直接写在 Java 代码里，必须写在这个文件中。系统只加载 JSON 里出现过的字符，写死在 Java 里会导致中文字符变方块。
+> **极其重要**：所有在 UI 上显示的文字，**严禁**直接写在 Java 代码里。系统会扫描 JSON 里出现过的字符来动态生成中文字体，写死在代码里会导致字变成方块或报错。
 
-系统会使用固定的 Key 命名约定去取文字：
-
-- **卡牌**：`element.<卡牌ID>.name` / `.desc`
-- **词条**：`aspect.<词条ID>.name`
-- **行动**：`slot.<行动ID>.name` / `.desc`
-- **槽位**：`slot.<槽位ID>.name` / `.desc`
-- **事件**：`event.<事件ID>.name` / `.desc` / `.result` （`.result` 会显示在右下角日志中）
-- **结局**：`ending.<结局ID>.name` / `.desc`
-- **开局**：`scenario.<开局ID>.name` / `.desc`
-- **系统 UI**：`ui.<功能名>` （如 `ui.start`, `ui.paused`, `ui.log`）
-
-*(缺失的 Key 会在界面上显示为 `[key名]` 作为警告)
+固定 Key 命名约定：
+- **卡牌**：`element.<ID>.name` / `.desc`
+- **词条**：`aspect.<ID>.name`
+- **行动/槽位**：`slot.<ID>.name` / `.desc`
+- **事件**：`event.<ID>.name` / `.desc` / `.result` (结算时写入日志)
+- **结局**：`ending.<ID>.name` / `.desc`
+- **系统 UI**：`ui.start`, `ui.paused`, `ui.log` 等。
 
 ---
 
-*文档生成于：Angela 研究所开发组。祝你在暗无天日的夜里写模组剧情愉快。* 
+## 🛠️ 8. 引擎高级功能（玩家指南）
 
-*“我真的活过那50天了么？”*
+### 💾 8.1 多存档系统
+=={可能存在大量BUG}==
+*   **快捷键**：游戏内按 `F5` 快速存档，按 `F9` 快速读档。
+*   **菜单操作**：按 `Esc` 呼出暂停菜单，可进行保存、读档、音量调节、返回主菜单。
+*   **存档文件**：默认保存在游戏根目录下的 `save_1.json`。完美恢复卡牌坐标、事件倒计时、槽位数据。
+
+### 🧩 8.2 Mod 模组加载
+=={未经测试，可能存在大量BUG}==
+1. 在游戏根目录新建 `mods` 文件夹。
+2. 在 `mods` 下新建任意名称的文件夹（如 `mods/NewStory/`）。
+3. 放入同名 JSON（如 `elements.json`, `events.json`）。
+4. 引擎启动时会按顺序合并。**重复的 ID 将覆盖主游戏数据**（注意看控制台日志）。
+
+### 🎵 8.3 音乐系统
+*   将音频文件放入 `assets/audio/` 目录。
+*   **强烈建议**使用 `.wav` 或 `.ogg` 格式。LibGDX 原生解码器对 `.mp3` 兼容性极差，容易导致崩溃或系统报错音。
+*   可通过事件动作 `play_music` 在剧情高潮时切换 BGM。

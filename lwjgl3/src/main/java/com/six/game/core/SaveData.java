@@ -4,26 +4,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SaveData {
-    // 卡牌数据
     public static class CardData {
+        public String saveId; // 存档专用的临时ID，用于关联槽位
         public String defId;
         public int count;
         public float x, y;
         public boolean locked;
         public float remaining;
     }
-    
-    // 窗口数据
+
     public static class SituationData {
-        public String verbId;
+        public String situationId;
+        public String verbId;       // 如果是行动窗口，这里存行动 ID
+        public String eventId;      // 如果是事件窗口，这里存事件 ID
         public float x, y;
-        public String runningEventId; // 正在跑的事件
         public float timer;
-        // 槽位里的卡牌 defId
-        public List<String> slotContents = new ArrayList<>(); 
+        public String runningEventId; // 正在跑的事件
+        public String selectedEventId; // 选中但没开始的事件
+        public List<String> slotSaveIds = new ArrayList<>(); // 槽位里卡的 saveId，空格存 "null"
     }
 
     public List<CardData> cards = new ArrayList<>();
     public List<SituationData> situations = new ArrayList<>();
     public Chronicle chronicle = new Chronicle();
+    public String ending; // 记录结局状态
 }

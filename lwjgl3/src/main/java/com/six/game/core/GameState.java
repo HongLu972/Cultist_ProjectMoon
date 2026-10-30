@@ -66,9 +66,14 @@ public class GameState {
         SaveData data = new SaveData();
         data.chronicle = this.chronicle;
         data.chronicle.totalPlayTime = this.totalTime;
+        data.ending = this.ending;
 
+        // 1. 给所有卡牌分配存档 ID，并保存
+        int cardIdx = 0;
         for (ElementInstance c : cards) {
             SaveData.CardData cd = new SaveData.CardData();
+            cd.saveId = "card_" + (cardIdx++);
+            c.tempSaveId = cd.saveId; // 临时挂载到实例上，方便槽位查找
             cd.defId = c.def.id;
             cd.count = c.count;
             cd.x = c.x;
@@ -77,15 +82,25 @@ public class GameState {
             cd.remaining = c.remaining;
             data.cards.add(cd);
         }
+
+        // 2. 保存所有窗口及其槽位状态
         for (Situation s : situations) {
             SaveData.SituationData sd = new SaveData.SituationData();
+            sd.situationId = s.situationId;
             sd.verbId = s.verbId;
+            sd.eventId = s.eventWindow && s.selected != null ? s.selected.id : null;
             sd.x = s.x;
             sd.y = s.y;
             sd.timer = s.timer;
-            if (s.running != null) sd.runningEventId = s.running.id;
+            sd.runningEventId = s.running != null ? s.running.id : null;
+            sd.selectedEventId = s.selected != null ? s.selected.id : null;
+
             for (Slot slot : s.slots) {
-                sd.slotContents.add(slot.content == null ? "null" : slot.content.def.id);
+                if (slot.content != null) {
+                    sd.slotSaveIds.add(slot.content.tempSaveId);
+                } else {
+                    sd.slotSaveIds.add("null");
+                }
             }
             data.situations.add(sd);
         }
@@ -98,7 +113,11 @@ public class GameState {
         this.backgrounds.clear();
         this.totalTime = data.chronicle.totalPlayTime;
         this.chronicle = data.chronicle;
+        this.ending = data.ending;
 
+        java.util.Map<String, ElementInstance> saveIdMap = new java.util.HashMap<>();
+
+        // 1. 恢复所有卡牌
         for (SaveData.CardData cd : data.cards) {
             ElementInstance c = addCard(library.element(cd.defId));
             c.count = cd.count;
@@ -106,14 +125,34 @@ public class GameState {
             c.y = cd.y;
             c.locked = cd.locked;
             c.remaining = cd.remaining;
+            saveIdMap.put(cd.saveId, c);
         }
 
-        // 简化版窗口恢复：仅恢复未运行的空窗口，避免复杂的事件引用错乱
+        // 2. 恢复所有窗口和槽位
         for (SaveData.SituationData sd : data.situations) {
-            if (sd.runningEventId == null && library.hasVerb(sd.verbId)) {
-                Situation s = unlockVerb(sd.verbId);
+            Situation s;
+            if (sd.eventId != null) {
+                // 恢复事件窗口
+                s = openEventWindow(events.require(sd.eventId), null, sd.x, sd.y);
+            } else {
+                // 恢复行动窗口
+                s = unlockVerb(sd.verbId);
                 s.x = sd.x;
                 s.y = sd.y;
+            }
+
+            // 恢复选中/运行状态
+            if (sd.selectedEventId != null) s.selected = events.require(sd.selectedEventId);
+            if (sd.runningEventId != null) s.running = events.require(sd.runningEventId);
+            s.timer = sd.timer;
+
+            // 恢复槽位里的卡牌
+            for (int i = 0; i < sd.slotSaveIds.size(); i++) {
+                if (i >= s.slots.size()) break; // 防止旧存档导致越界
+                String saveId = sd.slotSaveIds.get(i);
+                if (!saveId.equals("null") && saveIdMap.containsKey(saveId)) {
+                    s.slots.get(i).content = saveIdMap.get(saveId);
+                }
             }
         }
     }

@@ -191,4 +191,14 @@ public final class Actions {
             return Aspects.satisfies(ctx.aspects(), aspects);
         }
     }
+
+    /** "play_music": 切换背景音乐。 */
+    public static class PlayMusic extends Action {
+        public String track;
+        @Override
+        public boolean execute(ActionContext ctx) {
+            game.AudioManager.getInstance().playBgm(track);
+            return true;
+        }
+    }
 }
