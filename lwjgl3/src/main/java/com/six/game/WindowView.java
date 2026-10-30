@@ -16,10 +16,12 @@ import java.util.List;
 public class WindowView extends Table {
     private static final Color WINDOW = new Color(0.20f, 0.16f, 0.26f, 1f);
     private static final Color EVENT_WINDOW = new Color(0.16f, 0.20f, 0.26f, 1f);
+    private static final Color HEADER_COLOR = new Color(0.28f, 0.22f, 0.35f, 1f); // 标题栏颜色
 
     public final Situation situation;
     public final List<SlotActor> slotActors = new ArrayList<>();
     public final Label titleLabel;
+    public final Table header; // 新增：暴露标题栏，专门用来拖拽
     private final Ui ui;
     private final Label status;
     private final TextButton startButton;
@@ -28,15 +30,25 @@ public class WindowView extends Table {
         this.ui = ui;
         this.situation = situation;
         setBackground(ui.rect(situation.eventWindow ? EVENT_WINDOW : WINDOW));
-        setTouchable(Touchable.enabled); // 整个窗口可接受拖拽
+        setTouchable(Touchable.childrenOnly); // 自己不接收触摸，防止挡住子元素
         pad(8);
 
         String title = situation.eventWindow
             ? ui.texts.get("event." + situation.selected.id + ".name", situation.selected.id)
             : ui.texts.get("slot." + situation.verbId + ".name", situation.verbId);
+
+        // --- 核心修复：构建一个横跨全宽的标题栏 ---
+        header = new Table();
+        header.setBackground(ui.rect(HEADER_COLOR));
+        header.setTouchable(Touchable.enabled); // 标题栏接收触摸
+        header.pad(6);
+
         titleLabel = new Label(title, ui.labelStyle(Color.GOLD));
-        titleLabel.setTouchable(Touchable.enabled);
-        add(titleLabel).left().row();
+        titleLabel.setTouchable(Touchable.disabled); // 文字不拦截，让点击落在 header 上
+
+        header.add(titleLabel).left().expandX();
+        add(header).growX().padBottom(8).row();
+        // -----------------------------------------
 
         Table slotRow = new Table();
         for (int i = 0; i < situation.slots.size(); i++) {
@@ -45,7 +57,6 @@ public class WindowView extends Table {
             slotActors.add(sa);
 
             Table column = new Table();
-            // 判断是否为起始槽的 Carrier
             boolean isCarrier = situation.isSeed(i);
             String slotNameKey = isCarrier ? "slot.carrier" : "slot." + slot.defId;
             column.add(new Label(ui.texts.get(slotNameKey + ".name", slot.defId), ui.labelStyle(Color.LIGHT_GRAY))).padBottom(4).row();

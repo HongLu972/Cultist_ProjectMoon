@@ -12,26 +12,18 @@ import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.Touchable;
-import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.DragAndDrop;
 import com.badlogic.gdx.scenes.scene2d.utils.DragListener;
+import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
-import game.core.Clock;
-import game.core.ElementInstance;
-import game.core.EventDef;
-import game.core.GameState;
-import game.core.Situation;
-import game.core.Slot;
+import game.core.*;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 public class GameScreen implements Screen {
     private static final float STAGE_W = 1280, STAGE_H = 720;
@@ -47,6 +39,7 @@ public class GameScreen implements Screen {
     private final Stage uiStage = new Stage(new FitViewport(STAGE_W, STAGE_H));
 
     private final Group worldGroup = new Group();
+    private final DragAndDrop dnd = new DragAndDrop();
 
     private final InfoPanel infoPanel;
     private final LogPanel logPanel;
@@ -59,11 +52,11 @@ public class GameScreen implements Screen {
     private float infoX, infoY;
     private String lastInfoTitle, lastInfoBody;
 
-    private Table endingOverlay;
     private boolean dirty = true;
     private int lastSignature;
+    private float grabX = CardActor.W / 2f, grabY = CardActor.H / 2f;
 
-    public GameScreen(Ui ui, GameState state, float[] speeds) {
+    public GameScreen(Ui ui, GameState state, float[] speeds, boolean loadSave) {
         this.ui = ui;
         this.state = state;
         this.infoPanel = new InfoPanel(ui);
@@ -71,6 +64,8 @@ public class GameScreen implements Screen {
         this.pausedLabel = new Label(ui.texts.get("ui.paused"), ui.labelStyle(Color.SALMON));
         this.pausedLabel.setVisible(false);
         buildSpeedBar(speeds);
+
+        dnd.setKeepWithinStage(false);
 
         worldGroup.setSize(state.worldWidth, state.worldHeight);
         worldGroup.addActor(new WorldBackground(ui, state.worldWidth, state.worldHeight));
@@ -90,24 +85,41 @@ public class GameScreen implements Screen {
         Gdx.input.setInputProcessor(multiplexer);
 
         setupWorldInput();
+        setupGlobalDropTarget();
 
         state.addListener((situation, event) -> {
             String key = "event." + event.id + ".result";
-            if (ui.texts.has(key)) {
-                logPanel.add(ui.texts.get(key), ui);
-            } else {
-                logPanel.add("【" + ui.texts.get("event." + event.id + ".name", event.id) + "】已结算", ui);
+            if (ui.texts.has(key)) logPanel.add(ui.texts.get(key), ui);
+            state.chronicle.addRecord(state.totalTime, "结算事件: " + ui.texts.get("event." + event.id + ".name", event.id));
+        });
+
+        uiStage.addListener(new InputListener() {
+            @Override
+            public boolean keyDown(InputEvent event, int keycode) {
+                if (keycode == Input.Keys.F5) { saveGame(); return true; }
+                if (keycode == Input.Keys.F9) { loadGame(); return true; }
+                return false;
             }
         });
 
-        // 开局立刻生成第一个“时间流逝”窗口
-        spawnTimeWindow();
+        if (loadSave) {
+            loadGame();
+        } else {
+            spawnTimeWindow();
+            state.chronicle.addRecord(0, "研究所正式启动。");
+        }
     }
 
     private void spawnTimeWindow() {
-        EventDef timeEvent = state.events.get("time_A"); // 改这里
+        EventDef genEvent = state.events.get("delta");
+        if (genEvent != null) {
+            Situation s = state.openEventWindow(genEvent, null, state.worldWidth - 400, state.worldHeight - 400);
+            s.start();
+            dirty = true;
+        }
+        EventDef timeEvent = state.events.get("time_A");
         if (timeEvent != null) {
-            Situation s = state.openEventWindow(timeEvent, null, state.worldWidth - 400, state.worldHeight - 400);
+            Situation s = state.openEventWindow(timeEvent, null, state.worldWidth - 400, state.worldHeight - 600);
             s.start();
             dirty = true;
         }
@@ -147,7 +159,7 @@ public class GameScreen implements Screen {
                     return true;
                 }
                 if (button == Input.Buttons.RIGHT) {
-                    if (event.getTarget() instanceof CardActor) return false;
+                    if (event.getTarget() instanceof CardActor || event.getTarget() instanceof SlotActor) return false;
                     lastStageX = event.getStageX();
                     lastStageY = event.getStageY();
                     draggingView = true;
@@ -182,7 +194,29 @@ public class GameScreen implements Screen {
         });
     }
 
+    private void setupGlobalDropTarget() {
+        Actor bg = worldGroup.getChild(0);
+        dnd.addTarget(new DragAndDrop.Target(bg) {
+            @Override
+            public boolean drag(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
+                return true;
+            }
+
+            @Override
+            public void drop(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
+                ElementInstance card = (ElementInstance) payload.getObject();
+                detach(card);
+                // 直接用相对背景的坐标
+                card.x = x - grabX;
+                card.y = y - grabY;
+                dirty = true;
+            }
+        });
+    }
+
     private void rebuild() {
+        dnd.clear();
+
         for (int i = worldGroup.getChildren().size - 1; i >= 0; i--) {
             Actor a = worldGroup.getChildren().get(i);
             if (!(a instanceof WorldBackground)) a.remove();
@@ -193,7 +227,7 @@ public class GameScreen implements Screen {
             WindowView v = new WindowView(ui, s);
             v.setPosition(s.x, s.y);
             addWindowClick(v);
-            addWindowDrag(v); // 整个窗口绑定拖拽
+            addWindowDrag(v);
             worldGroup.addActor(v);
             views.add(v);
         }
@@ -202,7 +236,7 @@ public class GameScreen implements Screen {
             if (state.isInAnySlot(c)) continue;
             CardActor a = new CardActor(ui, c);
             if (!Float.isNaN(c.x)) a.setPosition(c.x, c.y);
-            addCardDrag(a);
+            addSource(a);
             addSelectOnClick(a);
             addCardRightClick(a);
             worldGroup.addActor(a);
@@ -210,9 +244,10 @@ public class GameScreen implements Screen {
 
         for (WindowView v : views) {
             for (SlotActor sa : v.slotActors) {
+                addSlotTarget(sa);
                 addSelectOnClick(sa);
                 if (sa.cardActor != null) {
-                    addCardDrag(sa.cardActor);
+                    addSource(sa.cardActor);
                     addSelectOnClick(sa.cardActor);
                     addCardRightClick(sa.cardActor);
                 }
@@ -221,11 +256,10 @@ public class GameScreen implements Screen {
     }
 
     private void addWindowDrag(WindowView view) {
-        view.addListener(new DragListener() {
+        view.header.addListener(new DragListener() {
             private float startX, startY, actorX, actorY;
             @Override
             public void dragStart(InputEvent event, float x, float y, int pointer) {
-                // 记录拖拽初始位置，防止窗口跳动
                 startX = event.getStageX();
                 startY = event.getStageY();
                 actorX = view.getX();
@@ -242,64 +276,48 @@ public class GameScreen implements Screen {
         });
     }
 
-    private void addCardDrag(CardActor actor) {
-        actor.addListener(new DragListener() {
-            private float offsetX, offsetY;
-            private boolean isDragging = false;
-
+    // --- 核心修复：回归 DragAndDrop 的虚影机制 ---
+    private void addSource(CardActor actor) {
+        dnd.addSource(new DragAndDrop.Source(actor) {
             @Override
-            public void dragStart(InputEvent event, float x, float y, int pointer) {
-                if (actor.card.locked) return;
-                isDragging = true;
-                offsetX = x;
-                offsetY = y;
-                actor.toFront(); // 拖拽时置顶
+            public DragAndDrop.Payload dragStart(InputEvent event, float x, float y, int pointer) {
+                if (actor.card.locked) return null;
+                grabX = x;
+                grabY = y;
                 hideInfo();
+                DragAndDrop.Payload p = new DragAndDrop.Payload();
+                p.setObject(actor.card);
+                p.setDragActor(new CardActor(ui, actor.card)); // 创建虚影
+                actor.setVisible(false); // 隐藏原卡
+                return p;
             }
 
             @Override
-            public void drag(InputEvent event, float x, float y, int pointer) {
-                if (!isDragging) return;
-                // 使用 Stage 坐标实时跟随鼠标，完美解决卡顿和偏移
-                Vector2 stage = new Vector2(event.getStageX(), event.getStageY());
-                worldGroup.stageToLocalCoordinates(stage);
-                actor.setPosition(stage.x - offsetX, stage.y - offsetY);
+            public void dragStop(InputEvent event, float x, float y, int pointer, DragAndDrop.Payload payload, DragAndDrop.Target target) {
+                actor.setVisible(true);
+            }
+        });
+    }
+
+    private void addSlotTarget(SlotActor sa) {
+        dnd.addTarget(new DragAndDrop.Target(sa) {
+            @Override
+            public boolean drag(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
+                ElementInstance card = (ElementInstance) payload.getObject();
+                if (sa.situation.slots.get(0).content == card) return false;
+                return sa.situation.canPlace(sa.index, card);
             }
 
             @Override
-            public void dragStop(InputEvent event, float x, float y, int pointer) {
-                if (!isDragging) return;
-                isDragging = false;
-
-                Vector2 stagePos = new Vector2(event.getStageX(), event.getStageY());
-                boolean droppedInSlot = false;
-
-                // 物理碰撞检测：鼠标松开的位置是否覆盖了某个 Slot
-                for (Actor child : worldGroup.getChildren()) {
-                    if (child instanceof WindowView wv) {
-                        for (SlotActor sa : wv.slotActors) {
-                            Vector2 local = sa.stageToLocalCoordinates(new Vector2(stagePos));
-                            if (local.x >= 0 && local.x <= sa.getWidth() && local.y >= 0 && local.y <= sa.getHeight()) {
-                                if (wv.situation.canPlace(sa.index, actor.card)) {
-                                    detach(actor.card);
-                                    wv.situation.placeCard(sa.index, actor.card);
-                                    droppedInSlot = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (droppedInSlot) break;
-                }
-
-                if (!droppedInSlot) {
-                    actor.card.x = actor.getX();
-                    actor.card.y = actor.getY();
-                }
+            public void drop(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
+                ElementInstance card = (ElementInstance) payload.getObject();
+                detach(card);
+                sa.situation.placeCard(sa.index, card);
                 dirty = true;
             }
         });
     }
+    // ---------------------------------------------
 
     private void addCardRightClick(CardActor actor) {
         actor.addListener(new ClickListener(Input.Buttons.RIGHT) {
@@ -345,7 +363,7 @@ public class GameScreen implements Screen {
     }
 
     private void addWindowClick(WindowView view) {
-        view.titleLabel.addListener(new ClickListener(Input.Buttons.LEFT) {
+        view.header.addListener(new ClickListener(Input.Buttons.LEFT) {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 select(KIND_WINDOW, view.situation.situationId, event);
@@ -389,8 +407,7 @@ public class GameScreen implements Screen {
         ElementInstance c = findCard(instanceId);
         if (c == null) return null;
         String title = ui.texts.get("element." + c.def.id + ".name", c.def.id);
-        StringBuilder body = new StringBuilder(ui.texts.get("element." + c.def.id + ".desc", ""));
-        return new String[] { title, body.toString() };
+        return new String[] { title, ui.texts.get("element." + c.def.id + ".desc", "") };
     }
 
     private String[] slotInfo(String slotId) {
@@ -409,40 +426,40 @@ public class GameScreen implements Screen {
     }
 
     private ElementInstance findCard(String instanceId) {
-        for (ElementInstance c : state.cards) {
-            if (c.instanceId.equals(instanceId)) return c;
-        }
+        for (ElementInstance c : state.cards) if (c.instanceId.equals(instanceId)) return c;
         return null;
     }
 
     private Slot findSlot(String slotId) {
-        for (Situation s : state.situations) {
-            for (Slot slot : s.slots) {
+        for (Situation s : state.situations)
+            for (Slot slot : s.slots)
                 if (slot.id.equals(slotId)) return slot;
-            }
-        }
         return null;
     }
 
     private Situation findSituation(String situationId) {
-        for (Situation s : state.situations) {
-            if (s.situationId.equals(situationId)) return s;
-        }
+        for (Situation s : state.situations) if (s.situationId.equals(situationId)) return s;
         return null;
     }
 
-    private void showEnding() {
-        hideInfo();
-        endingOverlay = new Table();
-        endingOverlay.setFillParent(true);
-        endingOverlay.setBackground(ui.rect(new Color(0f, 0f, 0f, 0.85f)));
-        endingOverlay.setTouchable(Touchable.enabled);
-        Label t = new Label(ui.texts.get("ending." + state.ending + ".name", state.ending), ui.labelStyle(Color.GOLD));
-        Label b = new Label(ui.texts.get("ending." + state.ending + ".desc", ""), ui.labelStyle(Color.LIGHT_GRAY));
-        b.setWrap(true);
-        endingOverlay.add(t).row();
-        endingOverlay.add(b).width(520).padTop(16);
-        uiStage.addActor(endingOverlay);
+    private void saveGame() {
+        SaveData data = state.createSaveData();
+        String json = new Json().toJson(data);
+        Gdx.files.local("savegame.json").writeString(json, false);
+        logPanel.add("【系统】存档成功 (F5)", ui);
+    }
+
+    private void loadGame() {
+        if (!Gdx.files.local("savegame.json").exists()) return;
+        String json = Gdx.files.local("savegame.json").readString();
+        SaveData data = new Json().fromJson(SaveData.class, json);
+        state.loadFromSave(data);
+        dirty = true;
+        logPanel.add("【系统】读档成功 (F9)", ui);
+        if (state.ending != null) {
+            EndingDef def = state.library.ending(state.ending);
+            ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(new EndingScreen(ui, state, def));
+        }
     }
 
     @Override
@@ -451,7 +468,11 @@ public class GameScreen implements Screen {
         pausedLabel.setVisible(clock.paused);
         clock.update(delta, state);
 
-        if (state.ending != null && endingOverlay == null) showEnding();
+        if (state.ending != null) {
+            EndingDef def = state.library.ending(state.ending);
+            ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(new EndingScreen(ui, state, def));
+            return;
+        }
 
         if (dirty || signature() != lastSignature) {
             rebuild();
@@ -459,6 +480,17 @@ public class GameScreen implements Screen {
             dirty = false;
         }
         refreshInfo();
+
+        // DND 虚影完美跟随鼠标
+        if (dnd.isDragging()) {
+            Actor a = dnd.getDragActor();
+            if (a != null) {
+                if (a.getStage() == null) worldStage.addActor(a);
+                tmp.set(Gdx.input.getX(), Gdx.input.getY());
+                worldStage.screenToStageCoordinates(tmp);
+                a.setPosition(tmp.x - grabX, tmp.y - grabY);
+            }
+        }
 
         ScreenUtils.clear(0.06f, 0.05f, 0.08f, 1f);
         worldStage.act(delta);
@@ -469,16 +501,12 @@ public class GameScreen implements Screen {
 
     private int signature() {
         int h = state.cards.size();
-        for (ElementInstance c : state.cards) {
-            h = 31 * h + c.instanceId.hashCode() + (c.locked ? 1 : 0);
-        }
+        for (ElementInstance c : state.cards) h = 31 * h + c.instanceId.hashCode() + (c.locked ? 1 : 0);
         for (Situation s : state.situations) {
             h = 31 * h + (s.isRunning() ? 1 : 0);
             h = 31 * h + s.slots.size();
             h = 31 * h + (s.selected == null ? 0 : s.selected.id.hashCode());
-            for (Slot slot : s.slots) {
-                h = 31 * h + (slot.content == null ? 0 : slot.content.instanceId.hashCode());
-            }
+            for (Slot slot : s.slots) h = 31 * h + (slot.content == null ? 0 : slot.content.instanceId.hashCode());
         }
         return h;
     }

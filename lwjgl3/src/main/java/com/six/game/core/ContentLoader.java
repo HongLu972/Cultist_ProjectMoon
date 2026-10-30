@@ -60,7 +60,8 @@ public class ContentLoader {
                 throw new IllegalStateException("有卡牌缺少 id");
             }
             if (lib.has(e.id)) {
-                throw new IllegalStateException("重复的卡牌 id: " + e.id);
+                // 控制台打印警告，后加载的覆盖前面的
+                System.out.println("[警告] 模组覆盖了已存在的卡牌 id: " + e.id);
             }
             lib.add(e);
         }
@@ -75,7 +76,7 @@ public class ContentLoader {
                 throw new IllegalStateException("有行动缺少 id");
             }
             if (library.hasVerb(v.id)) {
-                throw new IllegalStateException("重复的行动 id: " + v.id);
+                System.out.println("[警告] 模组覆盖了已存在的行动 id: " + v.id);
             }
             if (Element.USE.equals(v.id) || EventDef.NONE.equals(v.id)) {
                 throw new IllegalStateException("行动 id 不能用保留字: " + v.id);
@@ -123,7 +124,7 @@ public class ContentLoader {
                 throw new IllegalStateException("有事件缺少 id");
             }
             if (book.has(e.id)) {
-                throw new IllegalStateException("重复的事件 id: " + e.id);
+                System.out.println("[警告] 模组覆盖了已存在的事件 id: " + e.id);
             }
             if (!START_MODES.contains(e.start)) {
                 throw new IllegalStateException("事件 " + e.id + " 的 start 必须是 manual / auto / linked,而不是: " + e.start);

@@ -10,8 +10,7 @@
       { "type": "create", "target": "eye", "amount": 5 },
       { "type": "create", "target": "health", "amount": 1 },
       { "type": "create", "target": "reason", "amount": 2 },
-      { "type": "create", "target": "hope", "amount": 3 },
-      { "type": "trigger", "event": "delta" }
+      { "type": "create", "target": "hope", "amount": 3 }
     ]
   },
   {

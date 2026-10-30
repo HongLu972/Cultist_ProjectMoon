@@ -5,12 +5,10 @@ import java.util.List;
 import java.util.Random;
 
 public class GameState {
-    /** 引擎向外通知事件的接口。界面用它写"记录"。situation 在后台事件时为 null。 */
     public interface Listener {
         void eventCompleted(Situation situation, EventDef event);
     }
 
-    /** 不占窗口的后台事件(自动事件,或被后台事件 trigger 的事件)。 */
     public static class BackgroundRun {
         public final EventDef event;
         public float timer;
@@ -23,26 +21,23 @@ public class GameState {
         }
     }
 
-    /** 相邻两个窗口之间默认的水平间距。 */
     public static final float WINDOW_SPACING = 560f;
     private static final float CARD_STEP_X = 112f, CARD_STEP_Y = 150f;
 
     public final Library library;
     public final EventBook events;
-    /** 桌面上所有的牌(含窗口槽里的)。越靠后越在上层。 */
     public final List<ElementInstance> cards = new ArrayList<>();
     public final List<Situation> situations = new ArrayList<>();
     public final List<BackgroundRun> backgrounds = new ArrayList<>();
-    /** 所有随机判定都走这一个 Random。测试或回放时可以换成带种子的。 */
     public Random random = new Random();
-    /** 非 null 表示游戏已结束,值是结局 id。结束后 tick 不再推进。 */
     public String ending;
-    /** 世界地图大小。 */
     public float worldWidth = 3200f, worldHeight = 1800f;
 
-    private final List<Listener> listeners = new ArrayList<>();
+    // 编年史与时间
+    public Chronicle chronicle = new Chronicle();
+    public float totalTime = 0f;
 
-    // id 计数器属于存档的一部分,放在状态里而不是 static,测试互不污染。
+    private final List<Listener> listeners = new ArrayList<>();
     private int nextCardId = 0;
     private int nextSituationId = 0;
 
@@ -59,9 +54,6 @@ public class GameState {
         for (Listener l : new ArrayList<>(listeners)) l.eventCompleted(s, e);
     }
 
-    // ---------------------------------------------------------------- 开局
-
-    /** 按开局设定初始化:解锁行动窗口、发牌、启动自动事件。 */
     public void begin(ScenarioDef sc) {
         for (String v : sc.verbs) unlockVerb(v);
         for (EventDef.Product p : sc.cards) addCards(library.element(p.card), p.amount);
@@ -69,9 +61,64 @@ public class GameState {
         placeNewCards(worldWidth / 2f - 200f, worldHeight / 2f - 100f);
     }
 
-    // ---------------------------------------------------------------- 窗口
+    // ---------------------------------------------------------------- 存档与读档
+    public SaveData createSaveData() {
+        SaveData data = new SaveData();
+        data.chronicle = this.chronicle;
+        data.chronicle.totalPlayTime = this.totalTime;
 
-    /** 解锁一个行动窗口(已经有了就返回现有的)。新窗口顺着已有的往右排。 */
+        for (ElementInstance c : cards) {
+            SaveData.CardData cd = new SaveData.CardData();
+            cd.defId = c.def.id;
+            cd.count = c.count;
+            cd.x = c.x;
+            cd.y = c.y;
+            cd.locked = c.locked;
+            cd.remaining = c.remaining;
+            data.cards.add(cd);
+        }
+        for (Situation s : situations) {
+            SaveData.SituationData sd = new SaveData.SituationData();
+            sd.verbId = s.verbId;
+            sd.x = s.x;
+            sd.y = s.y;
+            sd.timer = s.timer;
+            if (s.running != null) sd.runningEventId = s.running.id;
+            for (Slot slot : s.slots) {
+                sd.slotContents.add(slot.content == null ? "null" : slot.content.def.id);
+            }
+            data.situations.add(sd);
+        }
+        return data;
+    }
+
+    public void loadFromSave(SaveData data) {
+        this.cards.clear();
+        this.situations.clear();
+        this.backgrounds.clear();
+        this.totalTime = data.chronicle.totalPlayTime;
+        this.chronicle = data.chronicle;
+
+        for (SaveData.CardData cd : data.cards) {
+            ElementInstance c = addCard(library.element(cd.defId));
+            c.count = cd.count;
+            c.x = cd.x;
+            c.y = cd.y;
+            c.locked = cd.locked;
+            c.remaining = cd.remaining;
+        }
+
+        // 简化版窗口恢复：仅恢复未运行的空窗口，避免复杂的事件引用错乱
+        for (SaveData.SituationData sd : data.situations) {
+            if (sd.runningEventId == null && library.hasVerb(sd.verbId)) {
+                Situation s = unlockVerb(sd.verbId);
+                s.x = sd.x;
+                s.y = sd.y;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- 窗口与卡牌（保持你原有逻辑）
     public Situation unlockVerb(String verbId) {
         int n = 0;
         for (Situation s : situations) {
@@ -87,19 +134,7 @@ public class GameState {
         return s;
     }
 
-    /**
-     * 为 slot 为 none 的 manual 事件开一个临时的事件窗口。carrier 是触发它的牌(可为 null)。
-     * 没有要等玩家做的事(无 input、无额外槽)或者事件声明了 autoStart 时,自动开始。
-     */
     public Situation openEventWindow(EventDef e, ElementInstance carrier, float x, float y) {
-        // 简单错开：如果这个位置有窗口了，就向右下偏移一点
-        for (Situation existing : situations) {
-            if (Math.abs(existing.x - x) < 100 && Math.abs(existing.y - y) < 100) {
-                x += 60;
-                y -= 60;
-            }
-        }
-
         Situation s = new Situation(this, "ev_" + e.id + "_" + (nextSituationId++), e, carrier);
         s.x = clamp(x, 10f, worldWidth - 520f);
         s.y = clamp(y, 10f, worldHeight - 360f);
@@ -109,7 +144,6 @@ public class GameState {
         return s;
     }
 
-    /** 双击"使用"一张牌:触发它的 use 触发器。成功返回 true。 */
     public boolean useCard(ElementInstance card) {
         if (ending != null || card.locked || isInAnySlot(card)) return false;
         String eventId = card.def.eventFor(Element.USE);
@@ -122,9 +156,6 @@ public class GameState {
         return true;
     }
 
-    // ---------------------------------------------------------------- 牌
-
-    /** 创建 n 张牌:可堆叠的并进桌面上现成的那摞(没有就新开一摞),不可堆叠的各自独立。返回最后涉及的那张/那摞。 */
     public ElementInstance addCards(Element def, int n) {
         if (n <= 0) throw new IllegalArgumentException("数量必须大于 0: " + n);
         if (def.stackable) {
@@ -153,7 +184,6 @@ public class GameState {
         return c;
     }
 
-    /** 整摞删除,同时把它从所有槽里清掉。空闲窗口丢了起始牌会跟着收起。 */
     public void removeCard(ElementInstance c) {
         cards.remove(c);
         for (Situation s : new ArrayList<>(situations)) {
@@ -167,13 +197,11 @@ public class GameState {
         }
     }
 
-    /** 从一摞里拿走 n 张;拿光了这摞就消失。 */
     public void removeFromStack(ElementInstance c, int n) {
         c.count -= n;
         if (c.count <= 0) removeCard(c);
     }
 
-    /** 从一摞里拆出一张(新的独立实例,继承位置和寿命)。本来就只有一张则原样返回。 */
     public ElementInstance splitOne(ElementInstance stack) {
         if (stack.count <= 1) return stack;
         stack.count--;
@@ -186,10 +214,9 @@ public class GameState {
 
     public boolean canMerge(ElementInstance src, ElementInstance dst) {
         return src != dst && src.def == dst.def && src.def.stackable
-                && !src.locked && !dst.locked && !isInAnySlot(dst);
+            && !src.locked && !dst.locked && !isInAnySlot(dst);
     }
 
-    /** 把 src 整摞并进 dst。 */
     public void mergeInto(ElementInstance src, ElementInstance dst) {
         if (!canMerge(src, dst)) return;
         dst.count += src.count;
@@ -197,7 +224,6 @@ public class GameState {
         removeCard(src);
     }
 
-    /** 把牌提到最上层(绘制顺序里排到最后)。 */
     public void bringToFront(ElementInstance c) {
         if (cards.remove(c)) cards.add(c);
     }
@@ -211,7 +237,6 @@ public class GameState {
         return false;
     }
 
-    /** 桌上这种牌的总张数(堆叠的按张数算)。 */
     public long count(String elementId) {
         long total = 0;
         for (ElementInstance c : cards) {
@@ -220,7 +245,6 @@ public class GameState {
         return total;
     }
 
-    /** 给所有还没位置的牌(不在槽里的)排位置:从 (nearX, nearY) 的下方依次摆开。 */
     public void placeNewCards(float nearX, float nearY) {
         int k = 0;
         for (ElementInstance c : cards) {
@@ -235,9 +259,6 @@ public class GameState {
         return Math.max(lo, Math.min(hi, v));
     }
 
-    // ---------------------------------------------------------------- 后台事件
-
-    /** 启动一个 auto 事件的自动循环;已经在循环则什么都不做。 */
     public void startAuto(String eventId) {
         EventDef e = events.require(eventId);
         for (BackgroundRun r : backgrounds) {
@@ -246,7 +267,6 @@ public class GameState {
         backgrounds.add(new BackgroundRun(e, e.time, true));
     }
 
-    /** 作为后台事件运行:time 为 0 则立刻结算,否则等 time 秒后结算一次。 */
     public void runBackground(String eventId) {
         EventDef e = events.require(eventId);
         if (e.time <= 0) {
@@ -263,13 +283,10 @@ public class GameState {
         placeNewCards(worldWidth / 2f - 200f, worldHeight / 2f - 100f);
     }
 
-    // ---------------------------------------------------------------- 时间推进
-
-    /** 推进 dt 秒(已乘过倍速)。游戏结束后不再推进。 */
     public void tick(float dt) {
         if (ending != null) return;
+        totalTime += dt;
 
-        // 先给"已有的牌"计寿命,再跑事件:本次 tick 里新产生的牌不应该在出生的这一刻就老化
         for (ElementInstance c : new ArrayList<>(cards)) {
             if (!(c.def.lifetime > 0)) continue;
             c.remaining -= dt;
@@ -289,7 +306,6 @@ public class GameState {
                 backgrounds.remove(r);
             }
         }
-
         placeNewCards(worldWidth / 2f - 200f, worldHeight / 2f - 100f);
     }
 
