@@ -25,6 +25,8 @@ import game.core.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class GameScreen implements Screen {
     private static final float STAGE_W = 1280, STAGE_H = 720;
@@ -94,7 +96,7 @@ public class GameScreen implements Screen {
 
         setupPauseMenu();
         setupWorldInput();
-        setupGlobalDropTarget();
+        // 移除了 setupGlobalDropTarget(); 因为不再依赖 Target 来接收空白处掉落
 
         InputMultiplexer multiplexer = new InputMultiplexer(uiStage, worldStage);
         Gdx.input.setInputProcessor(multiplexer);
@@ -124,15 +126,6 @@ public class GameScreen implements Screen {
                 return false;
             }
         });
-
-        // 启动逻辑
-        if (loadSaveSlot != null) {
-            loadGame();
-        } else {
-            spawnTimeWindow();
-            state.chronicle.addRecord(0, "研究所正式启动。");
-            AudioManager.getInstance().playBgm("audio/bgm_game.wav");
-        }
     }
 
     private void togglePause() {
@@ -224,21 +217,6 @@ public class GameScreen implements Screen {
         }
     }
 
-    private void spawnTimeWindow() {
-        EventDef genEvent = state.events.get("delta");
-        if (genEvent != null) {
-            Situation s = state.openEventWindow(genEvent, null, state.worldWidth - 400, state.worldHeight - 400);
-            s.start();
-            dirty = true;
-        }
-        EventDef timeEvent = state.events.get("time_A");
-        if (timeEvent != null) {
-            Situation s = state.openEventWindow(timeEvent, null, state.worldWidth - 400, state.worldHeight - 600);
-            s.start();
-            dirty = true;
-        }
-    }
-
     private void buildSpeedBar(float[] speeds) {
         speedBar.add(pausedLabel).padRight(14);
         ButtonGroup<TextButton> group = new ButtonGroup<>();
@@ -304,25 +282,6 @@ public class GameScreen implements Screen {
                 cam.zoom = Math.max(0.5f, Math.min(2.0f, cam.zoom + amountY * 0.1f));
                 cam.update();
                 return true;
-            }
-        });
-    }
-
-    private void setupGlobalDropTarget() {
-        Actor bg = worldGroup.getChild(0);
-        dnd.addTarget(new DragAndDrop.Target(bg) {
-            @Override
-            public boolean drag(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-                return true;
-            }
-
-            @Override
-            public void drop(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-                ElementInstance card = (ElementInstance) payload.getObject();
-                detach(card);
-                card.x = x - grabX;
-                card.y = y - grabY;
-                dirty = true;
             }
         });
     }
@@ -407,6 +366,17 @@ public class GameScreen implements Screen {
             @Override
             public void dragStop(InputEvent event, float x, float y, int pointer, DragAndDrop.Payload payload, DragAndDrop.Target target) {
                 actor.setVisible(true);
+                ElementInstance card = (ElementInstance) payload.getObject();
+
+                // 【核心修复】如果没有丢进槽位（target == null），就根据鼠标位置更新卡牌的世界坐标
+                if (target == null) {
+                    detach(card); // 如果在槽里，先拔出来
+                    Vector2 stagePos = new Vector2(event.getStageX(), event.getStageY());
+                    worldGroup.stageToLocalCoordinates(stagePos);
+                    card.x = stagePos.x - grabX;
+                    card.y = stagePos.y - grabY;
+                    dirty = true;
+                }
             }
         });
     }
@@ -436,6 +406,11 @@ public class GameScreen implements Screen {
             public void clicked(InputEvent event, float x, float y) {
                 if (state.isInAnySlot(actor.card)) {
                     detach(actor.card);
+                    // 【核心修复】右键退回桌面时，也让坐标跟随鼠标位置，防止飞雷神
+                    Vector2 stagePos = new Vector2(event.getStageX(), event.getStageY());
+                    worldGroup.stageToLocalCoordinates(stagePos);
+                    actor.card.x = stagePos.x;
+                    actor.card.y = stagePos.y;
                     dirty = true;
                 }
                 event.stop();
@@ -518,14 +493,36 @@ public class GameScreen implements Screen {
         ElementInstance c = findCard(instanceId);
         if (c == null) return null;
         String title = ui.texts.get("element." + c.def.id + ".name", c.def.id);
-        return new String[] { title, ui.texts.get("element." + c.def.id + ".desc", "") };
+        StringBuilder body = new StringBuilder(ui.texts.get("element." + c.def.id + ".desc", ""));
+
+        // 补回：把卡牌自身的词条显示出来
+        if (!c.def.aspects.isEmpty()) {
+            body.append("\n\n").append(ui.texts.get("ui.aspects", "词条")).append(": ").append(aspectList(c.def.aspects));
+        }
+        // 补回：显示寿命
+        if (c.def.lifetime > 0) {
+            body.append("\n").append(ui.texts.get("ui.lifetime", "寿命")).append(": ")
+                .append((int) Math.ceil(Math.max(0f, c.remaining))).append(ui.texts.get("ui.seconds", "秒"));
+        }
+        return new String[] { title, body.toString() };
     }
 
     private String[] slotInfo(String slotId) {
         Slot s = findSlot(slotId);
         if (s == null) return null;
         String title = ui.texts.get("slot." + s.defId + ".name", s.defId);
-        return new String[] { title, ui.texts.get("slot." + s.defId + ".desc", "") };
+        StringBuilder body = new StringBuilder(ui.texts.get("slot." + s.defId + ".desc", ""));
+
+        body.append("\n\n");
+        if (state.library.hasVerb(s.defId)) {
+            body.append(ui.texts.get("ui.seed_hint", "放入卡牌开始"));
+        } else if (s.accepts.isEmpty()) {
+            body.append(ui.texts.get("ui.accepts_any", "接受任何卡牌"));
+        } else {
+            // 补回：显示槽位接受的词条条件
+            body.append(ui.texts.get("ui.accepts", "接受")).append(": ").append(aspectList(s.accepts));
+        }
+        return new String[] { title, body.toString() };
     }
 
     private String[] windowInfo(String situationId) {
@@ -534,6 +531,16 @@ public class GameScreen implements Screen {
         EventDef e = s.running != null ? s.running : s.selected;
         if (e == null) return new String[] { ui.texts.get("slot." + s.verbId + ".name", s.verbId), "" };
         return new String[] { ui.texts.get("event." + e.id + ".name", e.id), ui.texts.get("event." + e.id + ".desc", "") };
+    }
+
+    /** 把 Map 词条转换成 "身体 x1, 精神 x2" 的字符串 */
+    private String aspectList(Map<String, Integer> aspects) {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Integer> e : new TreeMap<>(aspects).entrySet()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(ui.texts.get("aspect." + e.getKey() + ".name", e.getKey())).append(" x").append(e.getValue());
+        }
+        return sb.toString();
     }
 
     private ElementInstance findCard(String instanceId) {

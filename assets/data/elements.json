@@ -1,16 +1,31 @@
 [
   { "id": "carmen_invitation", "aspects": { "invitation": 1 }, "triggers": [ { "slot": "work", "event": "first_work" } ] },
-  { 
-    "id": "eye", "stackable": true, "aspects": { "money": 1 },
-    "triggers": [ { "slot": "prepare", "event": "prepare_defense" } ]
-  },
+  { "id": "carmen_lecture_flyer", "stackable": false, "aspects": { "invitation": 1 }, "triggers": [ { "slot": "out", "event": "carmen_lecture_1"}]},
+
+  { "id": "eye", "stackable": true, "aspects": { "money": 1 }, "triggers": [ { "slot": "prepare", "event": "prepare_defense" } ] },
   { "id": "health", "stackable": true, "aspects": { "body": 1 }, "triggers": [ { "slot": "work", "event": "work_basic" } ] },
+  { "id": "ex_health", "stackable": false, "aspects": { "tired": 1}, "lifetime": 60, "decayTo": "health"},
   { "id": "reason", "stackable": true, "aspects": { "mind": 1 }, "triggers": [ { "slot": "study", "event": "study_basic" } ] },
+  { "id": "ex_reason", "stackable": false, "aspects": { "tired": 1}, "lifetime": 60, "decayTo": "reason"},
   { "id": "passion", "stackable": true, "aspects": { "spirit": 1 } },
+  { "id": "ex_passion", "stackable": false, "aspects": { "tired": 1}, "lifetime": 60, "decayTo": "passion"},
+
   { "id": "hope", "stackable": true, "aspects": { "hope": 1 } },
   { "id": "despair", "stackable": true, "aspects": { "despair": 1 } },
   { "id": "readiness", "stackable": true, "aspects": { "readiness": 1 } },
   { "id": "evacuation", "stackable": true, "aspects": { "evacuation": 1 } },
   { "id": "evidence", "stackable": true, "aspects": { "evidence": 1 } },
-  { "id": "disease_flu", "aspects": { "sickness": 1 }, "lifetime": 90 }
+
+  { "id": "disease_flu", "aspects": { "sickness": 1 }, "lifetime": 120, "decayTo": "old" },
+  { "id": "old", "stackable": true, "aspects": {"oldness": 1}, "triggers": [ {"slot": "work", "event": "strongRecover"}]},
+  { "id": "supermedicine", "stackable": true, "aspects": {"precious": 1, "medicine": 2} },
+
+  { "id": "carmen", "stackable": false, "aspects": { "cogito": 100, "human": 1}, "triggers": [ {"slot": "out", "event": "find_Person"} ]},
+  { "id": "carmen_2", "stackable": false, "aspects": {"cogito": 100, "human": 1}, "triggers": [ {"slot": "out", "event": "find_Person_II"} ]},
+  { "id": "carmen_3", "stackable": false, "aspects": {"cogito": 100, "human": 1}},
+  { "id": "daniel", "stackable": false, "aspects": {"human": 1, "wealthy": 1}, "triggers": [ {"slot": "communication", "event": "askformoney"} ]},
+  { "id": "daniel_2", "stackable": false, "aspects": {"human": 1}, "lifetime": 120, "decayTo": "daniel"},
+  { "id": "kali", "stackable": false, "aspects": {"fixer": 5, "human": 1}, "triggers": [ {"slot": "out", "event": "fixerWork"}, {"slot": "enhance", "event": "enhancement"} ]}
+  { "id": "kali_2", "stackable": false, "aspects": {"fixer": 6, "human": 1}},
+  { "id": "author", "stackable": false, "aspects": {"human": -1, "tired": 999}}
 ]

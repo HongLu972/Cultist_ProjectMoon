@@ -18,23 +18,34 @@ public class AudioManager {
 
     public void playBgm(String path) {
         if (path == null || path.isEmpty()) return;
-        if (path.equals(currentBgmPath) && currentBgm != null && currentBgm.isPlaying()) return;
 
-        if (currentBgm != null) currentBgm.stop();
+        // 1. 如果当前已经在放这首歌，且真的在播放，就别打断它（防止重复播放）
+        if (path.equals(currentBgmPath) && currentBgm != null && currentBgm.isPlaying()) {
+            return;
+        }
 
+        // 2. 暴力防叠加：遍历缓存里的所有音乐，全部强制暂停并重置
+        for (Music m : bgmCache.values()) {
+            if (m != null) {
+                m.stop(); // 停止
+                m.setPosition(0f); // 回到开头（防止某些底层没停干净）
+            }
+        }
+
+        // 3. 加载新歌
         if (!bgmCache.containsKey(path)) {
             try {
                 Music music = Gdx.audio.newMusic(Gdx.files.internal(path));
                 music.setLooping(true);
                 bgmCache.put(path, music);
-                Gdx.app.log("AudioManager", "成功加载音频: " + path); // 控制台乱码没关系，能加载就行
+                Gdx.app.log("AudioManager", "成功加载音频: " + path);
             } catch (Exception e) {
-                // 捕获异常，不让他闪退！直接打印错误并返回
-                Gdx.app.error("AudioManager", "音频加载失败(请确认格式为有效的WAV或OGG): " + path, e);
+                Gdx.app.error("AudioManager", "音频加载失败: " + path, e);
                 return;
             }
         }
 
+        // 4. 播放新歌
         currentBgm = bgmCache.get(path);
         currentBgmPath = path;
         currentBgm.setVolume(volume);

@@ -10,7 +10,146 @@
       { "type": "create", "target": "eye", "amount": 5 },
       { "type": "create", "target": "health", "amount": 1 },
       { "type": "create", "target": "reason", "amount": 2 },
-      { "type": "create", "target": "hope", "amount": 3 }
+      { "type": "create", "target": "hope", "amount": 3 },
+      { "type": "trigger", "event": "delta" },
+      { "type": "trigger", "event": "time_A" }
+    ]
+  },
+  {
+    "id": "carmen_lecture_1",
+    "start": "manual",
+    "slot": "out",
+    "autoStart": true,
+    "time": 40,
+    "action": [
+      { "type": "consume", "target": "carmen_lecture_flyer", "amount": 1},
+      { "type": "create", "target": "eye", "amount": 8},
+      { "type": "create", "target": "carmen", "amount": 1},
+      { "type": "create", "target": "health", "amount": 1},
+      { "type": "create", "target": "reason", "amount": 2},
+      { "type": "create", "target": "passion", "amount": 2},
+      { "type": "unlock_verb", "verb": "work"},
+      { "type": "unlock_verb", "verb": "study"},
+      { "type": "trigger", "event": "time_pass_insitute"}
+    ]
+  },
+  {
+    "id": "find_Person",
+    "start": "manual",
+    "slot": "out",
+    "autoStart": false,
+    "time": 60,
+    "slots": [ {"id": "cost_findPerson"} ],
+    "input": {"human": 1, "money": 1},
+    "action": [
+      { "type": "consume", "target": "carmen", "amount": 1},
+      { "type": "consume", "target": "eye"},
+      { "type": "chance", "percent": "1",
+        "onSuccess": [
+          {"type": "create", "target": "kali", "amount": 1},
+          {"type": "create", "target": "daniel", "amount": 1},
+          {"type": "create", "target": "carmen_3", "amount": 1},
+          {"type": "unlock_verb", "verb": "communication"}
+        ],
+        "onFail": [
+          {"type": "create", "target": "kali", "amount": 1},
+          {"type": "create", "target": "carmen_2", "amount": 1}
+        ]
+      },
+      {"type": "unlock_verb", "verb": "enhance"}
+    ]
+  },
+  {
+    "id": "find_Person_II",
+    "start": "manual",
+    "slot": "out",
+    "autoStart": false,
+    "time": 80,
+    "slots": [ {"id": "cost_findPersonII"}, {"id": "fixer_findPersonII"} ],
+    "input": {"human": 2, "fixer": 4, "money": 1},
+    "action": [
+      {"type": "create", "target": "daniel", "amount": 1},
+      {"type": "consume", "target": "carmen_2", "amount": 1},
+      {"type": "unlock_verb", "verb": "communication"},
+      {"type": "consume", "target": "eye", "amount": 1}
+    ]
+  },
+  {
+    "id": "fixerWork",
+    "start": "manual",
+    "slot": "out",
+    "autoStart": false,
+    "time": 80,
+    "input": {"fixer": 4},
+    "action": [
+      {"type": "create", "target": "eye", "amount": 2}
+    ]
+  },
+  {
+    "id": "enhancement",
+    "start": "manual",
+    "slot": "enhance",
+    "autoStart": false,
+    "time": 40,
+    "slots": [ {"id": "enhancement_1"}, {"id": "enhancement_2"} ],
+    "input": {"fixer": 4, "money": 2},
+    "action": [
+      {"type": "consume", "target": "kali", "amount": 1},
+      {"type": "create", "target": "kali_2", "amount": 1},
+      {"type": "consume", "target": "eye", "amount": 2}
+    ]
+  },
+  {
+    "id": "askformoney",
+    "start": "manual",
+    "slot": "communication",
+    "autoStart": false,
+    "time": 20,
+    "input": {"wealthy": 1},
+    "action": [
+      { "type": "chance", "percent": "70",
+        "onSuccess": [
+          {"type": "create", "target": "eye", "amount": 3},
+          {"type": "consume", "target": "daniel", "amount": 1},
+          {"type": "create", "target": "daniel_2", "amount": 1}
+        ]
+      }
+    ]
+  },
+  {
+    "id": "time_pass_insitute",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 60,
+    "forceDrainAspects": [ "eye" ],
+    "slots": [ {"id": "time_slot"} ],
+    "action": [
+      {
+        "type": "check", "aspects": {"money": 1},
+        "onFail": [ { "type": "trigger", "event": "illness" } ]
+      },
+      { "type": "trigger", "event": "time_pass_insitute"},
+      { "type": "consume", "target": "eye", "amount": 1}
+    ]
+  },
+  {
+    "id": "illness",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 60,
+    "forceDrainAspects": [ "health" ],
+    "slots": [ {"id": "illness_slot"} ],
+    "action": [
+      {
+        "type": "check", "aspects": {"body": 1},
+        "onFail": [ {"type": "end_game", "ending": "poverty"} ],
+        "onSuccess": [
+          {"type": "consume", "target": "health", "amount": 1},
+          {"type": "create", "target": "disease_flu", "amount": 1}
+        ]
+      }
     ]
   },
   {
@@ -21,6 +160,8 @@
     "input": { "body": 1 },
     "action": [
       { "type": "create", "target": "eye", "amount": 2 },
+      { "type": "consume", "target": "health", "amount": 1},
+      { "type": "create", "target": "ex_health", "amount": 1}
     ]
   },
   {
@@ -70,9 +211,9 @@
     "action": [
       {
         "type": "check", "aspects": { "despair": 1 },
-        "onSuccess": [ 
+        "onSuccess": [
           { "type": "consume", "target": "despair", "amount": 1 },
-          { "type": "trigger", "event": "time_B" } 
+          { "type": "trigger", "event": "time_B" }
         ],
         "onFail": [ { "type": "trigger", "event": "time_A" } ]
       }
@@ -89,16 +230,16 @@
     "action": [
       {
         "type": "check", "aspects": { "hope": 1 },
-        "onSuccess": [ 
+        "onSuccess": [
           { "type": "consume", "target": "hope", "amount": 1 },
-          { "type": "trigger", "event": "time_A" } 
+          { "type": "trigger", "event": "time_A" }
         ],
         "onFail": [
           {
             "type": "check", "aspects": { "despair": 1 },
-            "onSuccess": [ 
+            "onSuccess": [
               { "type": "consume", "target": "despair", "amount": 1 },
-              { "type": "trigger", "event": "time_C" } 
+              { "type": "trigger", "event": "time_C" }
             ],
             "onFail": [ { "type": "trigger", "event": "time_B" } ]
           }
@@ -117,16 +258,16 @@
     "action": [
       {
         "type": "check", "aspects": { "hope": 1 },
-        "onSuccess": [ 
+        "onSuccess": [
           { "type": "consume", "target": "hope", "amount": 1 },
-          { "type": "trigger", "event": "time_B" } 
+          { "type": "trigger", "event": "time_B" }
         ],
         "onFail": [
           {
             "type": "check", "aspects": { "despair": 1 },
-            "onSuccess": [ 
+            "onSuccess": [
               { "type": "consume", "target": "despair", "amount": 1 },
-              { "type": "trigger", "event": "time_D" } 
+              { "type": "trigger", "event": "time_D" }
             ],
             "onFail": [ { "type": "trigger", "event": "time_C" } ]
           }
@@ -145,16 +286,16 @@
     "action": [
       {
         "type": "check", "aspects": { "hope": 1 },
-        "onSuccess": [ 
+        "onSuccess": [
           { "type": "consume", "target": "hope", "amount": 1 },
-          { "type": "trigger", "event": "time_C" } 
+          { "type": "trigger", "event": "time_C" }
         ],
         "onFail": [
           {
             "type": "check", "aspects": { "despair": 1 },
-            "onSuccess": [ 
+            "onSuccess": [
               { "type": "consume", "target": "despair", "amount": 1 },
-              { "type": "trigger", "event": "time_E" } 
+              { "type": "trigger", "event": "time_E" }
             ],
             "onFail": [ { "type": "trigger", "event": "time_D" } ]
           }
@@ -173,16 +314,16 @@
     "action": [
       {
         "type": "check", "aspects": { "hope": 1 },
-        "onSuccess": [ 
+        "onSuccess": [
           { "type": "consume", "target": "hope", "amount": 1 },
-          { "type": "trigger", "event": "time_D" } 
+          { "type": "trigger", "event": "time_D" }
         ],
         "onFail": [
           {
             "type": "check", "aspects": { "despair": 1 },
-            "onSuccess": [ 
+            "onSuccess": [
               { "type": "consume", "target": "despair", "amount": 1 },
-              { "type": "trigger", "event": "time_F" } 
+              { "type": "trigger", "event": "time_F" }
             ],
             "onFail": [ { "type": "trigger", "event": "time_E" } ]
           }
@@ -221,6 +362,30 @@
               }
             ]
           }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "strongRecover",
+    "start": "manual",
+    "slot": "work",
+    "time": 40,
+    "input": { "oldness": 1 },
+    "slots": [ { "id": "recover_slot" } ],
+    "action": [
+      {
+        "type": "check", "aspects": { "medicine": 2 },
+        "onSuccess": [
+          {"type": "create", "target": "health", "amount": 1},
+          {"type": "consume", "target": "old", "amount": 1}
+        ]
+      },
+      {
+        "type": "chance", "percent": "5",
+        "onSuccess": [
+          {"type": "create", "target": "health", "amount": 1},
+          {"type": "consume", "target": "old", "amount": 1}
         ]
       }
     ]

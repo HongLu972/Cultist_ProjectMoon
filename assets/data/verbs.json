@@ -2,5 +2,8 @@
   { "id": "work" },
   { "id": "study" },
   { "id": "prepare" },
-  { "id": "decide" }
+  { "id": "decide" },
+  { "id": "out"},
+  { "id": "communication"},
+  { "id": "enhance"}
 ]
