@@ -11,6 +11,7 @@
       { "type": "create", "target": "health", "amount": 1 },
       { "type": "create", "target": "reason", "amount": 2 },
       { "type": "create", "target": "hope", "amount": 3 },
+      { "type": "create", "target": "power", "amount": 1},
       { "type": "trigger", "event": "delta" },
       { "type": "trigger", "event": "time_A" }
     ]
@@ -28,9 +29,67 @@
       { "type": "create", "target": "health", "amount": 1},
       { "type": "create", "target": "reason", "amount": 2},
       { "type": "create", "target": "passion", "amount": 2},
+      { "type": "create", "target": "power", "amount": 1},
       { "type": "unlock_verb", "verb": "work"},
       { "type": "unlock_verb", "verb": "study"},
+      {"type": "unlock_verb", "verb": "enhance"},
       { "type": "trigger", "event": "time_pass_insitute"}
+    ]
+  },
+  {
+    "id": "exercise",
+    "start": "manual",
+    "slot": "enhance",
+    "autoStart": false,
+    "time": 60,
+    "action": [
+      { "type": "create", "target": "fitness", "amount": 1 },
+      { "type": "chance", "percent": "10",
+      "onSuccess": [ {"type": "trigger", "event": "exercise_2"}]}
+    ]
+  },
+  {
+    "id": "exercise_2",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": false,
+    "time": 60,
+    "action": [
+      { "type": "create", "target": "fitness", "amount": 1 },
+      { "type": "chance", "percent": "5",
+        "onSuccess": [ {"type": "trigger", "event": "exercise_2"}]}
+    ]
+  },
+  {
+    "id": "health_learning",
+    "start": "manual",
+    "slot": "enhance",
+    "autoStart": false,
+    "time": 60,
+    "slots": [ {"id": "health_learning_slot"} ],
+    "input": {"fitness": 2},
+    "action": [
+      { "type": "consume", "target": "fitness", "amount": 2},
+      { "type": "create", "target": "fitness_learnt", "amount": 1},
+      { "type": "chance", "percent": "5",
+      "onSuccess": [ {"type": "trigger", "event": "exercise_2"} ]}
+    ]
+  },
+  {
+    "id": "health_learnt_1",
+    "start": "manual",
+    "slot": "enhance",
+    "autoStart": "false",
+    "time": 60,
+    "slots": [ {"id": "health_learnt_1_slot"}],
+    "input": {"fitness": 2, "ability": 1},
+    "action": [
+      { "type": "consume", "target": "fitness_learnt", "amount": 1},
+      { "type": "consume", "target": "power", "amount": 1},
+      { "type": "create", "target": "power_2", "amount": 1},
+      { "type": "create", "target": "health", "amount": 1},
+      { "type": "chance", "percent": "20",
+      "onSuccess": [{"type": "trigger", "event": "exercise_2"}]}
     ]
   },
   {
@@ -55,8 +114,7 @@
           {"type": "create", "target": "kali", "amount": 1},
           {"type": "create", "target": "carmen_2", "amount": 1}
         ]
-      },
-      {"type": "unlock_verb", "verb": "enhance"}
+      }
     ]
   },
   {
@@ -157,11 +215,17 @@
     "start": "manual",
     "slot": "work",
     "time": 40,
+    "slots": [ {"id": "work_basic_slot"} ],
     "input": { "body": 1 },
     "action": [
       { "type": "create", "target": "eye", "amount": 2 },
       { "type": "consume", "target": "health", "amount": 1},
-      { "type": "create", "target": "ex_health", "amount": 1}
+      { "type": "create", "target": "ex_health", "amount": 1},
+      { "type": "chance", "percent": "1",
+      "onSuccess": [
+        { "type": "consume", "target": "author", "amount": 99},
+        { "type": "create", "target": "author", "amount": 1}
+      ]}
     ]
   },
   {
