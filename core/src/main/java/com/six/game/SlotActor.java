@@ -8,7 +8,7 @@ import com.six.game.core.Situation;
 
 /** 一个卡槽的视图,同时是拖拽的放置目标。槽里有牌时,牌的视图作为子节点放进来。 */
 public class SlotActor extends Table {
-    public static final float W = 112, H = 152;
+    public static final float W = 112, H = 172;
     private static final Color SLOT_COLOR = new Color(0.12f, 0.10f, 0.16f, 1f);
 
     public final Situation situation;

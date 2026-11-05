@@ -4,10 +4,10 @@
 
   { "id": "eye", "stackable": true, "aspects": { "money": 1 }, "triggers": [ { "slot": "prepare", "event": "prepare_defense" } ] },
 
-  { "id": "health", "stackable": true, "aspects": { "body": 1 }, "triggers": [ {"slot": "enhance", "event": "exercise"} ] },
+  { "id": "health", "stackable": true, "aspects": { "body": 1 }, "triggers": [ {"slot": "enhance", "event": "exercise"} ], "image": "img/cards/health.png" },
   { "id": "ex_health", "stackable": false, "aspects": { "tired": 1}, "lifetime": 60, "decayTo": "health"},
-  { "id": "fitness", "stackable": false, "aspects": { "fitness": 1 }, "lifetime": 180, "triggers": [ { "slot": "enhance", "event": "health_learning"}]},
-  { "id": "fitness_learnt", "stackable": false, "aspects": { "fitness": 2 }, "lifetime": 300},
+  { "id": "fitness", "stackable": false, "aspects": { "fitness": 1 }, "lifetime": 180, "triggers": [ { "slot": "enhance", "event": "health_learning"}], "image": "img/cards/fitness.png"},
+  { "id": "fitness_learnt", "stackable": false, "aspects": { "fitness": 2 }, "lifetime": 300, "image": "img/cards/fitness_learnt.png"},
   { "id": "power", "stackable": false, "aspects": { "ability": 1 }, "triggers": [ { "slot": "work", "event": "work_basic" }, { "slot": "enhance", "event": "health_learnt_1"}]},
   { "id": "power_2", "stackable": false, "aspects": { "ability": 2 }, "triggers": [{ "slot": "work", "event": "work_basic" }]},
 
