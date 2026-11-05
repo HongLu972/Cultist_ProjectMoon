@@ -75,23 +75,6 @@
     ]
   },
   {
-    "id": "health_learnt_1",
-    "start": "manual",
-    "slot": "enhance",
-    "autoStart": "false",
-    "time": 60,
-    "slots": [ {"id": "health_learnt_1_slot"}],
-    "input": {"fitness": 2, "ability": 1},
-    "action": [
-      { "type": "consume", "target": "fitness_learnt", "amount": 1},
-      { "type": "consume", "target": "power", "amount": 1},
-      { "type": "create", "target": "power_2", "amount": 1},
-      { "type": "create", "target": "health", "amount": 1},
-      { "type": "chance", "percent": 20,
-      "onSuccess": [{"type": "trigger", "event": "exercise_2"}]}
-    ]
-  },
-  {
     "id": "find_Person",
     "start": "manual",
     "slot": "out",
@@ -210,10 +193,61 @@
     ]
   },
   {
+    "id": "health_learnt_1",
+    "start": "manual",
+    "slot": "enhance",
+    "autoStart": "false",
+    "time": 60,
+    "slots": [ {"id": "health_learnt_1_slot"}],
+    "input": {"fitness": 4, "ability": 1},
+    "action": [
+      { "type": "consume", "target": "fitness_learnt", "amount": 1},
+      { "type": "consume", "target": "power", "amount": 1},
+      { "type": "create", "target": "power_2", "amount": 1},
+      { "type": "create", "target": "health", "amount": 1},
+      { "type": "chance", "percent": 20,
+        "onSuccess": [{"type": "trigger", "event": "exercise_2"}]}
+    ]
+  },
+  {
+    "id": "health_learnt_2",
+    "start": "manual",
+    "slot": "enhance",
+    "autoStart": "false",
+    "time": 60,
+    "slots": [ {"id": "health_learnt_2_slot"}, {"id": "health_learnt_2_slot_2"}],
+    "input": {"fitness": 8, "ability": 2},
+    "action": [
+      { "type": "consume", "target": "fitness_learnt", "amount": 2},
+      { "type": "consume", "target": "power_2", "amount": 1},
+      { "type": "create", "target": "power_3", "amount": 1},
+      { "type": "create", "target": "health", "amount": 1},
+      { "type": "chance", "percent": 30,
+        "onSuccess": [{"type": "trigger", "event": "exercise_2"}]}
+    ]
+  },
+  {
+    "id": "health_learnt_3",
+    "start": "manual",
+    "slot": "enhance",
+    "autoStart": "false",
+    "time": 60,
+    "slots": [ {"id": "health_learnt_3_slot"}, {"id": "health_learnt_3_slot_2"}],
+    "input": {"fitness": 12, "ability": 3},
+    "action": [
+      { "type": "consume", "target": "fitness_learnt", "amount": 3},
+      { "type": "consume", "target": "power_2", "amount": 0},
+      { "type": "create", "target": "power_3", "amount": 0},
+      { "type": "create", "target": "health", "amount": 0},
+      { "type": "chance", "percent": 30,
+        "onSuccess": [{"type": "trigger", "event": "exercise_2"}]}
+    ]
+  },
+  {
     "id": "work_basic",
     "start": "manual",
     "slot": "work",
-    "time": 40,
+    "time": 60,
     "slots": [ {"id": "work_basic_slot"} ],
     "input": { "body": 1 },
     "action": [
@@ -222,9 +256,55 @@
       { "type": "create", "target": "ex_health", "amount": 1},
       { "type": "chance", "percent": 1,
       "onSuccess": [
-        { "type": "consume", "target": "author", "amount": 99},
-        { "type": "create", "target": "author", "amount": 1}
+        {"type": "trigger", "event": "hereisauthor"}
       ]}
+    ]
+  },
+  {
+    "id": "work_basic_2",
+    "start": "manual",
+    "slot": "work",
+    "time": 50,
+    "slots": [ {"id": "work_basic_2_slot"} ],
+    "input": { "body": 1 },
+    "action": [
+      { "type": "create", "target": "eye", "amount": 2 },
+      { "type": "consume", "target": "health", "amount": 1},
+      { "type": "create", "target": "ex_health", "amount": 1},
+      { "type": "chance", "percent": 1,
+        "onSuccess": [
+          {"type": "trigger", "event": "hereisauthor"}
+        ]}
+    ]
+  },
+  {
+    "id": "work_basic_3",
+    "start": "manual",
+    "slot": "work",
+    "time": 50,
+    "slots": [ {"id": "work_basic_3_slot"} ],
+    "input": { "body": 1 },
+    "action": [
+      { "type": "create", "target": "eye", "amount": 2 },
+      { "type": "consume", "target": "health", "amount": 1},
+      { "type": "create", "target": "ex_health", "amount": 1},
+      { "type": "chance", "percent": 1,
+        "onSuccess": [
+          {"type": "trigger", "event": "hereisauthor"}
+        ]}
+    ]
+  },
+  {
+    "id": "hereisauthor",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 10,
+    "forceDrainAspects": [ "author" ],
+    "slots": [{"id": "authorhere"}],
+    "action": [
+      { "type": "consume", "target": "author", "amount": 1},
+      { "type": "create", "target": "author", "amount": 1}
     ]
   },
   {
@@ -247,7 +327,7 @@
       { "id": "p_slot_1" }
     ],
     "action": [
-      { "type": "consume", "target": "money", "amount": 1 },
+      { "type": "consume", "target": "money", "amount": 2 },
       { "type": "create", "target": "readiness", "amount": 1 },
       { "type": "create", "target": "evacuation", "amount": 1 }
     ]
@@ -441,7 +521,8 @@
         "type": "check", "aspects": { "medicine": 2 },
         "onSuccess": [
           {"type": "create", "target": "health", "amount": 1},
-          {"type": "consume", "target": "old", "amount": 1}
+          {"type": "consume", "target": "old", "amount": 1},
+          {"type": "consume", "target": "medicine", "amount": 1}
         ],
         "onFail": [
           {
