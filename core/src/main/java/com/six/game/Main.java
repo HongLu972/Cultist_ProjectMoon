@@ -1,44 +1,89 @@
-package game;
+package com.six.game; // 如果你的包名是 com.six.game，请改为 package com.six.game;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
-import game.core.ContentLoader;
-import game.core.GameState;
-import game.core.Library;
-import game.core.RecipeBook;
+import com.six.game.core.*;
 
-/** 用这个类替换 gdx-liftoff 生成的 Main。 */
+import java.util.ArrayList;
+
 public class Main extends Game {
-    // 换成你放进 assets/font/ 的中文字体文件名
     private static final String FONT_PATH = "font/NotoSansSC-Regular.ttf";
+    private static final String FALLBACK_LANGUAGE = "zh";
 
     private Ui ui;
+    private Library library;
+    private EventBook events;
+    private ArrayList<ScenarioDef> scenarios;
+    private GameConfig config;
 
     @Override
     public void create() {
-        String elementsJson = Gdx.files.internal("data/elements.json").readString("UTF-8");
-        String recipesJson = Gdx.files.internal("data/recipes.json").readString("UTF-8");
-
         ContentLoader loader = new ContentLoader();
-        Library library = loader.loadLibrary(elementsJson);
-        RecipeBook book = loader.loadRecipes(recipesJson, library);
+        config = loader.loadConfig(ModManager.loadWithMods("data/config.json", "config.json"));
 
-        // 临时的开局:一个"工作"窗口(2 个槽)+ 几张牌
-        GameState state = new GameState(library, book);
-        state.addSituation("work", 2);
-        state.addCard(library.element("health"));
-        state.addCard(library.element("health"));
-        state.addCard(library.element("reason"));
-        state.addCard(library.element("passion"));
-        state.addCard(library.element("lantern"));
+        String elementsJson   = ModManager.loadWithMods("data/elements.json", "elements.json");
+        String verbsJson      = ModManager.loadWithMods("data/verbs.json", "verbs.json");
+        String eventsJson     = ModManager.loadWithMods("data/events.json", "events.json");
+        String endingsJson    = ModManager.loadWithMods("data/endings.json", "endings.json");
+        String scenariosJson  = ModManager.loadWithMods("data/scenarios.json", "scenarios.json");
 
-        ui = new Ui(Gdx.files.internal(FONT_PATH), elementsJson + recipesJson);
-        setScreen(new GameScreen(ui, state));
+        library = loader.loadLibrary(elementsJson);
+        loader.loadVerbs(verbsJson, library);
+        loader.loadEndings(endingsJson, library);
+        events = loader.loadEvents(eventsJson, library);
+        loader.validate(library, events);
+        scenarios = loader.loadScenarios(scenariosJson, library, events);
+
+        String textsJson = ModManager.loadWithMods("data/text_" + config.language + ".json", "text_" + config.language + ".json");
+        TextBook texts = loader.loadTexts(textsJson);
+        String fontScan = elementsJson + verbsJson + eventsJson + endingsJson + scenariosJson + textsJson;
+
+        if (!FALLBACK_LANGUAGE.equals(config.language)) {
+            String fallbackJson = ModManager.loadWithMods("data/text_" + FALLBACK_LANGUAGE + ".json", "text_" + FALLBACK_LANGUAGE + ".json");
+            texts = texts.withFallback(loader.loadTexts(fallbackJson));
+            fontScan += fallbackJson;
+        }
+
+        ui = new Ui(Gdx.files.internal(FONT_PATH), fontScan, texts);
+
+        // 播放主菜单音乐
+        AudioManager.getInstance().playBgm("audio/bgm_menu.ogg");
+
+        showMainMenu();
+    }
+
+    public void loadFromData(SaveData data) {
+        GameState state = new GameState(library, events);
+        state.worldWidth = config.worldWidth;
+        state.worldHeight = config.worldHeight;
+        state.loadFromSave(data);
+        // 传回调
+        setScreen(new GameScreen(ui, state, config.speeds, this::showMainMenu));
+    }
+
+    private void showMainMenu() {
+        setScreen(new StartScreen(ui, scenarios,
+            sc -> startNewGame(sc),
+            () -> {
+                // 主菜单点击“读取存档”
+                setScreen(new SaveLoadScreen(ui, SaveLoadScreen.Mode.LOAD, null, () -> showMainMenu()));
+            }
+        ));
+    }
+
+    private void startNewGame(ScenarioDef sc) {
+        GameState state = new GameState(library, events);
+        state.worldWidth = config.worldWidth;
+        state.worldHeight = config.worldHeight;
+        state.begin(sc);
+        // 注意这里：去掉了 null 和旧参数，直接传回调
+        setScreen(new GameScreen(ui, state, config.speeds, this::showMainMenu));
     }
 
     @Override
     public void dispose() {
         if (getScreen() != null) getScreen().dispose();
-        ui.dispose();
+        if (ui != null) ui.dispose();
+        AudioManager.getInstance().dispose(); // 释放音频
     }
 }

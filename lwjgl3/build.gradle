@@ -211,3 +211,11 @@ tasks.withType(JavaExec.class).configureEach {
 if(enableGraalNative == 'true') {
   apply from: file("nativeimage.gradle")
 }
+
+// 让游戏运行时的工作目录定位到根目录的 assets 文件夹
+tasks.named('run') {
+  workingDir = rootProject.file('assets')
+  if (!workingDir.exists()) {
+    workingDir = projectDir
+  }
+}

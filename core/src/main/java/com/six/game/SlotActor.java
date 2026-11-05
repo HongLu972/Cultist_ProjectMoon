@@ -1,14 +1,14 @@
-package game;
+package com.six.game;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import game.core.ElementInstance;
-import game.core.Situation;
+import com.six.game.core.ElementInstance;
+import com.six.game.core.Situation;
 
 /** 一个卡槽的视图,同时是拖拽的放置目标。槽里有牌时,牌的视图作为子节点放进来。 */
 public class SlotActor extends Table {
-    public static final float W = 120, H = 160;
+    public static final float W = 112, H = 152;
     private static final Color SLOT_COLOR = new Color(0.12f, 0.10f, 0.16f, 1f);
 
     public final Situation situation;
