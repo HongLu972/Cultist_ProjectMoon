@@ -219,3 +219,47 @@ tasks.named('run') {
     workingDir = projectDir
   }
 }
+
+// ==========================================
+// jpackage 傻瓜打包配置
+// ==========================================
+
+// 1. 把依赖收集到一个文件夹
+tasks.register('copyDependencies', Copy) {
+  dependsOn 'jar'
+  from configurations.runtimeClasspath
+  from jar.archiveFile
+  into layout.buildDirectory.dir('jpackage-input')
+}
+
+// ==========================================
+// jpackage 本地免网络打包配置 (终极稳定版)
+// ==========================================
+tasks.register('makeExe', Exec) {
+  // 确保 jar 和依赖都已经构建完毕
+  dependsOn 'jar', 'copyDependencies'
+
+  doFirst {
+    // 清理旧目录
+    delete layout.buildDirectory.dir('jpackage-output')
+
+    // 核心修复：直接从 Gradle 的任务里拿 jar 名字，绝对不会错
+    def mainJarName = tasks.jar.archiveFile.get().asFile.name
+
+    def currentJdkPath = System.getProperty('java.home')
+    def inputDir = layout.buildDirectory.dir('jpackage-input').get().asFile.absolutePath
+    def outputDir = layout.buildDirectory.dir('jpackage-output').get().asFile.absolutePath
+
+    println "正在打包主程序: " + mainJarName
+
+    // 设置执行命令
+    commandLine "${currentJdkPath}/bin/jpackage",
+      '--type', 'app-image',
+      '--name', 'Cultist_ProjectMoon',
+      '--input', inputDir,
+      '--main-jar', mainJarName,
+      '--main-class', 'com.six.game.lwjgl3.Lwjgl3Launcher',
+      '--dest', outputDir,
+      '--win-console'
+  }
+}
