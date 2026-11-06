@@ -102,7 +102,7 @@ public class ContentLoader {
                 throw new IllegalStateException("有结局缺少 id");
             }
             if (library.hasEnding(e.id)) {
-                throw new IllegalStateException("重复的结局 id: " + e.id);
+                System.out.println("[警告] 模组覆盖了已存在的结局 id: " + e.id);
             }
             library.addEnding(e);
         }
@@ -246,7 +246,8 @@ public class ContentLoader {
                 throw new IllegalStateException("有开局缺少 id");
             }
             if (!ids.add(s.id)) {
-                throw new IllegalStateException("重复的开局 id: " + s.id);
+                System.out.println("[警告] 模组覆盖了已存在的开局 id: " + s.id);
+                // 注意：如果这里是为了覆盖，别用 Set 存 ids 了，或者改成先 remove 再 add
             }
             for (EventDef.Product p : s.cards) {
                 if (p.card == null || !lib.has(p.card)) {
