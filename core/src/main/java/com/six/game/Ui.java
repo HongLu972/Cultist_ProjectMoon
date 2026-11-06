@@ -79,14 +79,33 @@ public class Ui implements Disposable {
     public Texture texture(String path) {
         if (path == null || path.isEmpty()) return null;
         if (textures.containsKey(path)) return textures.get(path);
-        FileHandle fh = Gdx.files.internal(path);
+
+        // 核心：先去 mods 目录里找有没有同路径的图片
+        FileHandle fh = findInMods(path);
         Texture t = null;
-        if (fh.exists()) {
+        if (fh != null && fh.exists()) {
             t = new Texture(fh);
             t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
         textures.put(path, t);
         return t;
+    }
+
+    // 新增一个辅助方法：遍历 mods 文件夹找资源
+    private FileHandle findInMods(String path) {
+        FileHandle modsDir = Gdx.files.local("mods");
+        if (modsDir.exists() && modsDir.isDirectory()) {
+            for (FileHandle mod : modsDir.list()) {
+                if (!mod.isDirectory()) continue;
+                // 看看 Mod 文件夹里是不是有这个相对路径的文件
+                FileHandle target = mod.child(path);
+                if (target.exists()) {
+                    return target; // 找到了，返回 Mod 里的文件
+                }
+            }
+        }
+        // 如果 Mod 里没找到，返回内置路径
+        return Gdx.files.internal(path);
     }
 
     public TextureRegion whiteRegion() {

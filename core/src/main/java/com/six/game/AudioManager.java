@@ -2,6 +2,8 @@ package com.six.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.files.FileHandle;
+
 import java.util.HashMap;
 
 public class AudioManager {
@@ -20,17 +22,15 @@ public class AudioManager {
         if (path == null || path.isEmpty()) return;
         if (path.equals(currentBgmPath) && currentBgm != null && currentBgm.isPlaying()) return;
 
-        // 强行关闭所有缓存中的音乐，防止叠加
         for (Music m : bgmCache.values()) {
-            if (m != null) {
-                m.stop();
-                m.setPosition(0f);
-            }
+            if (m != null) { m.stop(); m.setPosition(0f); }
         }
 
         if (!bgmCache.containsKey(path)) {
             try {
-                Music music = Gdx.audio.newMusic(Gdx.files.internal(path));
+                // 核心修改：先去 mods 里找
+                FileHandle fh = findInMods(path);
+                Music music = Gdx.audio.newMusic(fh);
                 music.setLooping(true);
                 bgmCache.put(path, music);
             } catch (Exception e) {
@@ -43,6 +43,19 @@ public class AudioManager {
         currentBgmPath = path;
         currentBgm.setVolume(volume);
         currentBgm.play();
+    }
+
+    // AudioManager 里也加一个一模一样的 findInMods 方法
+    private FileHandle findInMods(String path) {
+        FileHandle modsDir = Gdx.files.local("mods");
+        if (modsDir.exists() && modsDir.isDirectory()) {
+            for (FileHandle mod : modsDir.list()) {
+                if (!mod.isDirectory()) continue;
+                FileHandle target = mod.child(path);
+                if (target.exists()) return target;
+            }
+        }
+        return Gdx.files.internal(path);
     }
 
     public void setVolume(float v) {
