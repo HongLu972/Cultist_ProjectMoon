@@ -118,7 +118,7 @@ Action trees consist of multiple nodes. Each node returns "success" or "failure"
 ---
 
 ## 🪦 5. Ending System (`endings.json`)
-Defines various endings and **"Frostpunk-style review subtitles."**
+Defines various endings and **"review subtitles."**
 
 ```json
 [
@@ -129,20 +129,12 @@ Defines various endings and **"Frostpunk-style review subtitles."**
       "duration": 16.0,
       "subtitles": [
         { "time": 0.0, "text": "The flames and smoke dissipate." },
-        { "time": 4.0, "text": "Beside you lie {casualty} cold, lifeless bodies." }
+        { "time": 4.0, "text": "Beside you lie several cold, lifeless bodies." }
       ]
     }
   }
 ]
-```
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `id` | String | Unique ending ID. |
-| `type` | String | Ending type (`BE`, `GE`, `TE`, `HE`). |
-| `review.duration`| Float | Total duration of the review sequence (in seconds). |
-| `review.subtitles`| Array | Subtitle timeline. `time`: appearance time, `text`: the text. <br>**Supports dynamic variable substitution** (e.g., `{casualty}` is replaced by the actual number of casualty cards, `{evidence}` by the number of evidence cards). |
-
----
+````
 
 ## 🚩 6. Scenario System (`scenarios.json`)
 Options presented to the player on the new game screen.
