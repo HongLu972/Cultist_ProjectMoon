@@ -1,6 +1,6 @@
 [English](./README_en.md) | [中文](./README.md)
 
-# Cultist Simulator (Project Moon Mod) – Data & System API Documentation v1.2
+# Cultist Simulator (Project Moon Mod) – Data & System API Documentation v1.0.0-alpha.4
 
 This game is built on a **purely data-driven** architecture. By modifying JSON files, you can completely rewrite the story, adjust numerical values, add new cards, or even create large-scale story mods—all without touching a single line of Java code.
 
