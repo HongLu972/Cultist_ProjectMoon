@@ -1,6 +1,6 @@
 [English](./README_en.md) | 中文
 
-# 月计模拟器 (Cultist Project Moon) 数据与系统 API 文档 v1.2
+# 月计模拟器 (Cultist Project Moon) 数据与系统 API 文档 v1.0.0-alpha.4
 
 本游戏采用**纯数据驱动（Data-Driven）**架构。通过修改 JSON 文件，你可以完全重写剧情、修改数值、增加卡牌、乃至制作大型剧情 Mod，而无需改动任何 Java 代码。
 
