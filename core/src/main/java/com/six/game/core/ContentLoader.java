@@ -47,6 +47,7 @@ public class ContentLoader {
         json.setElementType(ScenarioDef.class, "cards", EventDef.Product.class);
         json.setElementType(ScenarioDef.class, "verbs", String.class);
         json.setElementType(ScenarioDef.class, "autoEvents", String.class);
+        json.setElementType(Element.class, "hiddenAspects", Integer.class);
         // 注意:没有开 setIgnoreUnknownFields,字段名拼错会直接抛 SerializationException,这是好事。
     }
 

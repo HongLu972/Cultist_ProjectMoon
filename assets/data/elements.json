@@ -36,7 +36,7 @@
   { "id": "kali", "stackable": false, "aspects": {"fixer": 5, "human": 1}, "triggers": [ {"slot": "out", "event": "fixerWork"}, {"slot": "enhance", "event": "enhancement"} ], "image": "img/cards/kali.png"},
   { "id": "kali_2", "stackable": false, "aspects": {"fixer": 6, "human": 1},"image": "img/cards/kali.png"},
   { "id": "author", "stackable": false, "aspects": {"human": -1, "tired": 999}},
-  { "id": "benjamin", "stackable": false, "aspects": {"human": 1, "widsom": 2}},
+  { "id": "benjamin", "stackable": false, "aspects": {"human": 1, "wisdom": 2}},
   { "id": "elijah", "stackable": false, "aspects": {"human": 1, "wisdom": 1}},
   { "id": "gabriel", "stackable": false, "aspects": {"human": 1}},
   { "id": "michelle", "stackable": false, "aspects": {"human": 1, "kind": 1}},

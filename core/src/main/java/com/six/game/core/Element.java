@@ -13,6 +13,8 @@ public class Element {
     public String image;
     /** 词条。卡牌自身的 id 也隐式算作一个词条。 */
     public HashMap<String, Integer> aspects = new HashMap<>();
+    /** 隐藏词条（UI上不显示，但底层逻辑生效） */
+    public HashMap<String, Integer> hiddenAspects = new HashMap<>();
     /** 寿命(秒)。-1 或不写表示永久。 */
     public float lifetime = -1f;
     /** 寿命到期后变成哪张牌;不写则直接消失。 */

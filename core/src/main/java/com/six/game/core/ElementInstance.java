@@ -25,9 +25,15 @@ public class ElementInstance {
         this.remaining = def.lifetime > 0 ? def.lifetime : -1f;
     }
 
-    /** 单张牌的词条表,自带"以自身 id 命名的隐式词条"。 */
     public Map<String, Integer> aspects() {
-        Map<String, Integer> m = new HashMap<>(def.aspects);
+        Map<String, Integer> m = new HashMap<>();
+        // 1. 塞入明属性
+        if (def.aspects != null) m.putAll(def.aspects);
+        // 2. 塞入暗属性
+        if (def.hiddenAspects != null) {
+            def.hiddenAspects.forEach((k, v) -> m.merge(k, v, Integer::sum));
+        }
+        // 3. 加上自身的 ID 隐式属性（如果你没删掉之前那行的话）
         m.merge(def.id, 1, Integer::sum);
         return m;
     }

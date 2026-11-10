@@ -50,8 +50,9 @@
   },
   {
     "id": "exercise_2",
-    "start": "linked",
+    "start": "manual",
     "slot": "none",
+    "autoStart": true,
     "time": 60,
     "action": [
       { "type": "create", "target": "fitness", "amount": 1 },
@@ -111,8 +112,17 @@
       {"type": "create", "target": "daniel", "amount": 1},
       {"type": "consume", "target": "carmen_2", "amount": 1},
       {"type": "unlock_verb", "verb": "communication"},
-      {"type": "consume", "target": "eye", "amount": 1}
+      {"type": "consume", "target": "eye", "amount": 1},
+      {"type": "create", "target": "carmen_3", "amount": 1}
     ]
+  },
+  {
+    "id": "find_Person_III",
+    "start": "manual",
+    "slot": "out",
+    "autoStart": false,
+    "time": 60,
+    "slots": [ {"id": "cost_findPersonIII"}, {"id": "cost_"}]
   },
   {
     "id": "fixerWork",
