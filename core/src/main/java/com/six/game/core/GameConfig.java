@@ -9,4 +9,7 @@ public class GameConfig {
     /** 世界地图大小(窗口只显示其中一部分,拖动背景来移动视角)。 */
     public float worldWidth = 3200f;
     public float worldHeight = 1800f;
+
+    public String windowTitle = "模拟器引擎";
+    public String windowIcon = "libgdx128.png";
 }

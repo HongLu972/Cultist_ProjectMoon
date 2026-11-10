@@ -519,12 +519,11 @@ public class GameScreen implements Screen {
         String title = ui.texts.get("element." + c.def.id + ".name", c.def.id);
         StringBuilder body = new StringBuilder(ui.texts.get("element." + c.def.id + ".desc", ""));
 
-        if (!c.def.aspects.isEmpty()) {
-            body.append("\n\n").append(ui.texts.get("ui.aspects", "词条")).append(": ").append(aspectList(c.def.aspects));
-        }
-        if (c.def.lifetime > 0) {
-            body.append("\n").append(ui.texts.get("ui.lifetime", "寿命")).append(": ")
-                .append((int) Math.ceil(Math.max(0f, c.remaining))).append(ui.texts.get("ui.seconds", "秒"));
+        // 👈 核心修复：用 visibleAspects()，隐藏属性就不会显示在面板上了喵！
+        Map<String, Integer> currentAspects = c.visibleAspects();
+
+        if (!currentAspects.isEmpty()) {
+            body.append("\n\n").append(ui.texts.get("ui.aspects", "词条")).append(": ").append(aspectList(currentAspects));
         }
         return new String[] { title, body.toString() };
     }

@@ -1,6 +1,7 @@
 package com.six.game.core;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
@@ -80,6 +81,10 @@ public class GameState {
             cd.y = c.y;
             cd.locked = c.locked;
             cd.remaining = c.remaining;
+
+            // 【修复】把临时属性存进去！
+            cd.tempAspects = new HashMap<>(c.tempAspects);
+
             data.cards.add(cd);
         }
 
@@ -101,7 +106,7 @@ public class GameState {
                 } else {
                     sd.slotSaveIds.add("null");
                 }
-                sd.slotDefIds.add(slot.defId); // 👈 顺便保存真实槽位 ID
+                sd.slotDefIds.add(slot.defId);
             }
             data.situations.add(sd);
         }
@@ -127,6 +132,10 @@ public class GameState {
             c.locked = cd.locked;
             c.remaining = cd.remaining;
             c.tempSaveId = cd.saveId;
+
+            // 【修复】把存档里的临时属性恢复给这张卡！
+            c.tempAspects = cd.tempAspects != null ? new HashMap<>(cd.tempAspects) : new HashMap<>();
+
             saveIdMap.put(cd.saveId, c);
         }
 

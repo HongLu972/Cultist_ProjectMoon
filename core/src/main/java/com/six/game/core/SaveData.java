@@ -1,6 +1,7 @@
 package com.six.game.core;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class SaveData {
@@ -12,6 +13,7 @@ public class SaveData {
         public float x, y;
         public boolean locked;
         public float remaining;
+        public HashMap<String, Integer> tempAspects = new HashMap<>();
     }
 
     public static class SituationData {

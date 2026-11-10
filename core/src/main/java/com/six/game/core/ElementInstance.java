@@ -25,16 +25,36 @@ public class ElementInstance {
         this.remaining = def.lifetime > 0 ? def.lifetime : -1f;
     }
 
+    /** 实例级临时词条（比如锻炼后增加的属性，可以写负数扣除） */
+    public java.util.HashMap<String, Integer> tempAspects = new java.util.HashMap<>();
+
+    /** 【底层逻辑用】所有词条总和（包含隐藏、临时、隐式ID） */
     public Map<String, Integer> aspects() {
-        Map<String, Integer> m = new HashMap<>();
-        // 1. 塞入明属性
+        Map<String, Integer> m = new java.util.HashMap<>();
         if (def.aspects != null) m.putAll(def.aspects);
-        // 2. 塞入暗属性
+        // 把隐藏属性加进去（比如卡门暗藏的 cogito: 100）
         if (def.hiddenAspects != null) {
             def.hiddenAspects.forEach((k, v) -> m.merge(k, v, Integer::sum));
         }
-        // 3. 加上自身的 ID 隐式属性（如果你没删掉之前那行的话）
+        // 隐式 ID 属性
         m.merge(def.id, 1, Integer::sum);
+        // 临时属性
+        if (tempAspects != null) {
+            tempAspects.forEach((k, v) -> m.merge(k, v, Integer::sum));
+        }
+        m.entrySet().removeIf(entry -> entry.getValue() <= 0);
+        return m;
+    }
+
+    /** 【UI 显示用】只显示基础词条和临时词条，隐藏词条绝不外露！ */
+    public Map<String, Integer> visibleAspects() {
+        Map<String, Integer> m = new java.util.HashMap<>();
+        if (def.aspects != null) m.putAll(def.aspects);
+        // 注意：这里不合并 def.hiddenAspects！
+        if (tempAspects != null) {
+            tempAspects.forEach((k, v) -> m.merge(k, v, Integer::sum));
+        }
+        m.entrySet().removeIf(entry -> entry.getValue() <= 0);
         return m;
     }
 

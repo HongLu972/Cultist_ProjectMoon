@@ -57,6 +57,18 @@
     "action": [
       { "type": "create", "target": "fitness", "amount": 1 },
       { "type": "chance", "percent": 5,
+        "onSuccess": [ {"type": "trigger", "event": "exercise_3"}]}
+    ]
+  },
+  {
+    "id": "exercise_3",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 60,
+    "action": [
+      { "type": "create", "target": "fitness", "amount": 1 },
+      { "type": "chance", "percent": 5,
         "onSuccess": [ {"type": "trigger", "event": "exercise_2"}]}
     ]
   },
@@ -106,7 +118,7 @@
     "slot": "out",
     "autoStart": false,
     "time": 80,
-    "slots": [ {"id": "cost_findPersonII"}, {"id": "fixer_findPersonII"} ],
+    "slots": [ {"id": "cost_findPersonII", "accepts": {"fixer": 4}}, {"id": "fixer_findPersonII", "accepts": {"money": 1}} ],
     "input": {"human": 2, "fixer": 4, "money": 1},
     "action": [
       {"type": "create", "target": "daniel", "amount": 1},
@@ -122,7 +134,14 @@
     "slot": "out",
     "autoStart": false,
     "time": 60,
-    "slots": [ {"id": "cost_findPersonIII"}, {"id": "cost_"}]
+    "slots": [ {"id": "cost_findPersonIII"}, {"id": "cost_II_findPersonIII"}],
+    "input": {"money": 2},
+    "action": [
+      {"type": "create", "target": "elijah", "amount": 1},
+      {"type": "consume", "target": "money", "amount": 2},
+      {"type": "consume", "target": "human", "amount": 1},
+      {"type": "create", "target": "carmen"}
+    ]
   },
   {
     "id": "fixerWork",

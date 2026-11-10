@@ -194,6 +194,31 @@ public final class Actions {
         }
     }
 
+    /** "modify_aspects": 修改当前槽位里特定卡牌的词条。 */
+    public static class ModifyAspects extends Action {
+        public String target; // 要修改的卡牌 ID 或词条
+        public HashMap<String, Integer> aspects = new HashMap<>(); // 要增加的数值（可以是负数）
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            if (ctx.situation == null) return false;
+            boolean modified = false;
+
+            for (Slot s : ctx.situation.slots) {
+                if (s.content != null) {
+                    // 如果 target 为空，或者这张牌带有 target 词条/ID，就开始改造它
+                    if (target == null || target.isEmpty() || s.content.aspects().containsKey(target)) {
+                        aspects.forEach((k, v) ->
+                            s.content.tempAspects.merge(k, v, Integer::sum)
+                        );
+                        modified = true;
+                    }
+                }
+            }
+            return modified;
+        }
+    }
+
     /** "play_music": 切换背景音乐。 */
     public static class PlayMusic extends Action {
         public String track;

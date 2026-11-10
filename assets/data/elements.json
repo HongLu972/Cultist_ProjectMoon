@@ -6,8 +6,8 @@
 
   { "id": "health", "stackable": true, "aspects": { "body": 1 }, "triggers": [ {"slot": "enhance", "event": "exercise"} ], "image": "img/cards/health.png" },
   { "id": "ex_health", "stackable": false, "aspects": { "tired": 1}, "lifetime": 60, "decayTo": "health","image": "img/cards/health.png"},
-  { "id": "fitness", "stackable": false, "aspects": { "fitness": 1 }, "lifetime": 180, "triggers": [ { "slot": "enhance", "event": "health_learning"}], "image": "img/cards/fitness.png"},
-  { "id": "fitness_learnt", "stackable": false, "aspects": { "fitness": 4 }, "lifetime": 300, "image": "img/cards/fitness_learnt.png"},
+  { "id": "fitness", "stackable": false, "aspects": { "fitness": 1 }, "lifetime": 240, "triggers": [ { "slot": "enhance", "event": "health_learning"}], "image": "img/cards/fitness.png"},
+  { "id": "fitness_learnt", "stackable": false, "aspects": { "fitness": 4 }, "lifetime": 360, "image": "img/cards/fitness_learnt.png"},
   { "id": "power", "stackable": false, "aspects": { "ability": 1 }, "triggers": [ { "slot": "work", "event": "work_basic" }, { "slot": "enhance", "event": "health_learnt_1"}]},
   { "id": "power_2", "stackable": false, "aspects": { "ability": 2 }, "triggers": [{ "slot": "work", "event": "work_basic_2" }, { "slot": "enhance", "event": "health_learnt_2"}]},
   { "id": "power_3", "stackable": false, "aspects": { "ability": 3 }, "triggers": [{ "slot": "work", "event": "work_basic_3" }, { "slot": "enhance", "event": "health_learnt_3"}]},
@@ -17,6 +17,8 @@
 
   { "id": "passion", "stackable": true, "aspects": { "spirit": 1 }, "image": "img/cards/passion.png"},
   { "id": "ex_passion", "stackable": false, "aspects": { "tired": 1}, "lifetime": 60, "decayTo": "passion","image": "img/cards/passion.png"},
+  { "id": "inspiration", "stackable": false, "aspects": { "inspire": 1 }, "lifetime": 240, "image": "img/cards/inspiration.png"},
+  { "id": "inspiration_learnt", "stackable": false, "aspects": { "inspire": 2 }, "lifetime": 360, "image": "img/cards/inspiration_learnt.png"},
 
   { "id": "hope", "stackable": true, "aspects": { "hope": 1 } },
   { "id": "despair", "stackable": true, "aspects": { "despair": 1 } },
@@ -35,10 +37,10 @@
   { "id": "daniel_2", "stackable": false, "aspects": {"human": 1}, "lifetime": 120, "decayTo": "daniel","image": "img/cards/daniel.png"},
   { "id": "kali", "stackable": false, "aspects": {"fixer": 5, "human": 1}, "triggers": [ {"slot": "out", "event": "fixerWork"}, {"slot": "enhance", "event": "enhancement"} ], "image": "img/cards/kali.png"},
   { "id": "kali_2", "stackable": false, "aspects": {"fixer": 6, "human": 1},"image": "img/cards/kali.png"},
-  { "id": "author", "stackable": false, "aspects": {"human": -1, "tired": 999}},
+  { "id": "author", "stackable": false, "aspects": {"human": -1, "tired": 999}, "lifetime": 325, "decayTo": "carmen_lecture_flyer"},
   { "id": "benjamin", "stackable": false, "aspects": {"human": 1, "wisdom": 2}},
-  { "id": "elijah", "stackable": false, "aspects": {"human": 1, "wisdom": 1}},
-  { "id": "gabriel", "stackable": false, "aspects": {"human": 1}},
+  { "id": "elijah", "stackable": false, "aspects": {"human": 1}},
+  { "id": "gabriel", "stackable": false, "aspects": {"human": 1, "wisdom": 1}},
   { "id": "michelle", "stackable": false, "aspects": {"human": 1, "kind": 1}},
   { "id": "giovanni", "stackable": false, "aspects": {"human": 1, "wisdom": 2}, "lifetime": 60, "decayTo": "giovanni_2"},
   { "id": "giovanni_2", "stackable": false, "aspects": {"human": 1, "tired": 2}, "lifetime": 120, "decayTo": "giovanni"},
