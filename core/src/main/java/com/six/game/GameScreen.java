@@ -37,7 +37,7 @@ public class GameScreen implements Screen {
     private final GameState state;
     private final Clock clock = new Clock();
 
-    private final InputMultiplexer multiplexer;
+    private InputMultiplexer multiplexer;
 
     private final Stage worldStage = new Stage(new FitViewport(STAGE_W, STAGE_H));
     private final Stage uiStage = new Stage(new FitViewport(STAGE_W, STAGE_H));
@@ -94,7 +94,10 @@ public class GameScreen implements Screen {
         setupPauseMenu();
         setupWorldInput();
 
+        // 修复 1：声明并赋值
         multiplexer = new InputMultiplexer(uiStage, worldStage);
+        Gdx.input.setInputProcessor(multiplexer);
+        Gdx.input.setInputProcessor(multiplexer); // 修复 2：加上这句，不然鼠标点不动
 
         state.addListener((situation, event) -> {
             String key = "event." + event.id + ".result";
@@ -106,13 +109,11 @@ public class GameScreen implements Screen {
         uiStage.addListener(new InputListener() {
             @Override
             public boolean keyDown(InputEvent event, int keycode) {
-                // 空格：纯粹暂停/恢复时间
                 if (keycode == Input.Keys.SPACE) {
                     clock.paused = !clock.paused;
                     pausedLabel.setVisible(clock.paused);
                     return true;
                 }
-                // ESC：呼出菜单
                 if (keycode == Input.Keys.ESCAPE) {
                     togglePauseMenu();
                     return true;
@@ -121,7 +122,34 @@ public class GameScreen implements Screen {
             }
         });
 
-        // 如果是一个全新的游戏（没有任何窗口），自动拉起初始事件
+        // 1. 伪造一个左上角的窗口图标（比如一个齿轮或者你喜欢的图片）
+        Image modIcon = new Image(ui.rect(new Color(0.4f, 0.3f, 0.5f, 1f))); // 如果没图片，就用纯色块
+        modIcon.setSize(32, 32);
+
+        // 2. 监听右键点击
+        modIcon.addListener(new ClickListener(Input.Buttons.RIGHT) {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                showModSystemMenu(modIcon);
+            }
+        });
+
+        // --- 左上角系统菜单按钮 ---
+        Table topLeftTable = new Table();
+        topLeftTable.setFillParent(true);
+        topLeftTable.top().left().pad(8);
+
+        // 直接用个明晃晃的按钮，不怕找不到喵！
+        TextButton modMenuBtn = new TextButton("☰ 系统菜单", ui.buttonStyle());
+        modMenuBtn.addListener(new ClickListener(Input.Buttons.LEFT) {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                showModSystemMenu(modMenuBtn);
+            }
+        });
+
+        topLeftTable.add(modMenuBtn).size(110, 34);
+        uiStage.addActor(topLeftTable);
         if (state.situations.isEmpty()) {
             spawnInitialEvents();
         }
@@ -232,6 +260,37 @@ public class GameScreen implements Screen {
 
         pauseMenu.add(window);
         uiStage.addActor(pauseMenu);
+    }
+
+    private void showModSystemMenu(Actor anchor) {
+        // 防止重复点击生成多个菜单
+        for (Actor child : uiStage.getActors()) {
+            if (child instanceof Table && "mod_menu".equals(child.getName())) {
+                child.remove();
+                return; // 如果菜单已经存在，点击就关闭它
+            }
+        }
+
+        Table menuTable = new Table();
+        menuTable.setName("mod_menu");
+        menuTable.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
+        menuTable.pad(10);
+
+        TextButton btnEditor = new TextButton("🛠️ 打开 Mod 管理器", ui.buttonStyle());
+        btnEditor.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(new ModEditorScreen(ui));
+                if (menuTable.getParent() != null) menuTable.remove();
+            }
+        });
+        menuTable.add(btnEditor).width(200).height(40).row();
+
+        // 计算按钮在屏幕上的坐标，让菜单贴边弹出
+        Vector2 pos = anchor.localToStageCoordinates(new Vector2(0, 0));
+        // 放在按钮正下方
+        menuTable.setPosition(pos.x, pos.y - menuTable.getPrefHeight() - 10);
+        uiStage.addActor(menuTable);
     }
 
     private void buildSpeedBar(float[] speeds) {
@@ -628,8 +687,9 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
-        // 每次切回这个界面时，重新夺回输入控制权
-        Gdx.input.setInputProcessor(multiplexer);
+        if (multiplexer != null) {
+            Gdx.input.setInputProcessor(multiplexer);
+        }
     }
     @Override public void resize(int width, int height) {
         worldStage.getViewport().update(width, height, true);

@@ -86,7 +86,7 @@ public class Lwjgl3Launcher {
                 }
 
                 if (iconFile != null && iconFile.exists()) {
-                    System.out.println("[Launcher] 成功找到图标: " + iconFile.getAbsolutePath());
+                    System.out.println("[Launcher] 成功找到图标了喵: " + iconFile.getAbsolutePath());
                     configuration.setWindowIcon(iconFile.getPath(), iconFile.getPath(), iconFile.getPath(), iconFile.getPath());
                 } else {
                     System.out.println("[Launcher] 警告: 找不到图标文件 " + iconPath + "，使用默认图标。");

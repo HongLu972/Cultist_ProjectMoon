@@ -6,4 +6,5 @@ package com.six.game.core;
  */
 public class VerbDef {
     public String id;
+    public String icon;
 }

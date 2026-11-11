@@ -61,11 +61,11 @@ public class Main extends Game {
         setScreen(new GameScreen(ui, state, config.speeds, this::showMainMenu));
     }
 
-    private void showMainMenu() {
+    // 确保这个方法存在，而且访问修饰符是 public
+    public void showMainMenu() {
         setScreen(new StartScreen(ui, scenarios,
             sc -> startNewGame(sc),
             () -> {
-                // 主菜单点击“读取存档”
                 setScreen(new SaveLoadScreen(ui, SaveLoadScreen.Mode.LOAD, null, () -> showMainMenu()));
             }
         ));

@@ -8,9 +8,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.ui.TextField;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Disposable;
@@ -137,10 +135,28 @@ public class Ui implements Disposable {
         TextField.TextFieldStyle style = new TextField.TextFieldStyle();
         style.font = font;
         style.fontColor = Color.WHITE;
-        style.background = rect(new Color(0.1f, 0.1f, 0.1f, 0.8f));
-        style.focusedBackground = rect(new Color(0.15f, 0.15f, 0.2f, 1f));
+        // 修复：去掉前面的 ui.
+        style.background = rect(new Color(0.1f, 0.15f, 0.3f, 1f));
+        style.focusedBackground = rect(new Color(0.2f, 0.25f, 0.45f, 1f));
         style.cursor = rect(Color.WHITE);
-        style.selection = rect(new Color(0.4f, 0.3f, 0.5f, 1f));
+        style.selection = rect(new Color(0.5f, 0.4f, 0.6f, 1f));
+        return style;
+    }
+
+    // 👇 新增：下拉框专属样式
+    public SelectBox.SelectBoxStyle selectBoxStyle() {
+        SelectBox.SelectBoxStyle style = new SelectBox.SelectBoxStyle();
+        style.font = font;
+        style.fontColor = Color.WHITE;
+        style.background = rect(new Color(0.1f, 0.15f, 0.3f, 1f));
+        style.scrollStyle = new ScrollPane.ScrollPaneStyle();
+
+        style.listStyle = new List.ListStyle();
+        style.listStyle.font = font;
+        style.listStyle.fontColorSelected = Color.WHITE;
+        style.listStyle.fontColorUnselected = Color.LIGHT_GRAY;
+        style.listStyle.selection = rect(new Color(0.4f, 0.3f, 0.5f, 1f));
+        style.listStyle.background = rect(new Color(0.2f, 0.16f, 0.26f, 1f));
         return style;
     }
 
