@@ -149,6 +149,21 @@ Options presented to the player on the new game screen.
 
 ## 🛠️ 9. Engine Advanced Features
 
-### 🧩 9.2 Visual Mod Editor
-*   Click `🛠️ Create Mod` to open. 
+### 💾 9.1 Multi-Save System
+*   **Shortcuts**: Press `Esc` in-game to open the menu for saving/loading. (Press `Space` to purely pause/resume time).
+*   **Menu Operations**: Includes 20 independent save slots with **custom naming** (e.g., "First Despair").
+*   **Save Location**: Stored in `saves/slot_1.json` ~ `slot_20.json`. Perfectly restores card coordinates, event timers, slot data, and the review chronicle.
+
+### 🧩 9.2 Mod Loading
+1. Create a `mods` folder in the game root directory.
+2. Create a subfolder with any name (e.g., `mods/NewStory/`).
+3. Place JSON files with the same names inside (e.g., `elements.json`) along with `img` and `audio` folders.
+4. The engine merges them sequentially at startup. **Duplicate IDs will override the base game data**.
+
+### 🧩 9.3 Visual Mod Editor
+*   Click `🛠️ Create Mod` to open.
 *   No JSON knowledge required! Form-based interface for aspects, visual Scratch-like blocks for action trees, auto-generates bilingual text files, and exports to `mods/MyCustomMod/`.
+
+### 🎵 9.4 Music System
+*   Place audio files in the `assets/audio/` directory.
+*   **Strongly recommended** to use `.wav` or `.ogg` format. LibGDX's native decoder has extremely poor compatibility with `.mp3`.
