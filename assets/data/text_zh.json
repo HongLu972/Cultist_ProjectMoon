@@ -54,6 +54,7 @@
   "slot.communication.desc": "和人们交谈...或者拉赞助？",
   "slot.enhance.name": "强化",
   "slot.enhance.desc": "我变强了?真的假的?",
+  "slot.music.name": "回忆曲调",
 
   "slot.time_slot_A.name": "绝望",
   "slot.time_slot_B.name": "绝望或希望",
@@ -105,6 +106,13 @@
   "element.fitness_learnt.name": "活力:学有所成",
   "element.power.name": "手无缚鸡之力",
   "element.power_2.name": "稍有几分力气",
+  "element.music_origin.name": "曲调：初始",
+  "element.music_saikai.name": "曲调：SAIKAI",
+  "element.music_childrenofcity.name": "曲调：都市之子",
+  "element.music_araya.name": "曲调：回忆·阿赖耶",
+  "element.music_betweentwoworld_1.name": "曲调：两世之间I",
+  "element.music_betweentwoworld_2.name": "曲调：两世之间II",
+  "element.music_rendezvous.name": "曲调：Rendezvous",
 
   "event.first_work.name": "即将结束",
   "event.work_basic.name": "工作",
@@ -133,6 +141,7 @@
   "event.exercise_3.name": "气血涌动",
   "event.health_learning.name": "活力萌发",
   "event.health_learnt_1.name": "活力迸发",
+  "event.findMusic.name": "回忆",
 
   "ending.te_underlight.name": "TE — 于光中",
   "ending.te_underlight.desc": "这是必要的牺牲——A",

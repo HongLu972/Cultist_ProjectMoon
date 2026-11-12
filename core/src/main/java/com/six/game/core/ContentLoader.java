@@ -48,6 +48,11 @@ public class ContentLoader {
         json.setElementType(ScenarioDef.class, "verbs", String.class);
         json.setElementType(ScenarioDef.class, "autoEvents", String.class);
         json.setElementType(Element.class, "hiddenAspects", Integer.class);
+        json.addClassTag("random_create", Actions.RandomCreate.class);
+        json.addClassTag("random_do", Actions.RandomDo.class);
+        json.setElementType(Actions.RandomDo.class, "options", Actions.RandomDo.Option.class);
+        json.setElementType(Actions.RandomDo.Option.class, "action", Action.class);
+        json.setElementType(Actions.RandomCreate.class, "options", Actions.RandomCreate.Option.class);
         // 注意:没有开 setIgnoreUnknownFields,字段名拼错会直接抛 SerializationException,这是好事。
     }
 

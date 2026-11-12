@@ -32,7 +32,8 @@
       { "type": "create", "target": "power", "amount": 1},
       { "type": "unlock_verb", "verb": "work"},
       { "type": "unlock_verb", "verb": "study"},
-      {"type": "unlock_verb", "verb": "enhance"},
+      { "type": "unlock_verb", "verb": "enhance"},
+      { "type": "unlock_verb", "verb": "music"},
       { "type": "trigger", "event": "time_pass_insitute"}
     ]
   },
@@ -563,6 +564,96 @@
           }
         ]
       }
+    ]
+  },
+  {
+    "id": "findMusic",
+    "start": "manual",
+    "slot": "music",
+    "time": 1,
+    "action": [
+      {
+        "type": "random_create",
+        "options": [
+          { "target": "music_origin", "weight": 1 },
+          { "target": "music_saikai", "weight": 1 },
+          { "target": "music_childrenofcity", "weight": 1 },
+          { "target": "music_araya", "weight": 1 },
+          { "target": "music_betweentwoworld_1", "weight": 1 },
+          { "target": "music_betweentwoworld_2", "weight": 1 },
+          { "target": "music_rendezvous", "weight": 1}
+        ]
+      }
+    ]
+  },
+  {
+    "id": "music_origin",
+    "start": "manual",
+    "slot": "music",
+    "autoStart": true,
+    "time": 3,
+    "action": [
+      { "type": "play_music", "track": "audio/bgm_game.ogg"}
+    ]
+  },
+  {
+    "id": "music_saikai",
+    "start": "manual",
+    "slot": "music",
+    "autoStart": true,
+    "time": 3,
+    "action": [
+      { "type": "play_music", "track": "audio/saikai.ogg"}
+    ]
+  },
+  {
+    "id": "music_childrenofcity",
+    "start": "manual",
+    "slot": "music",
+    "autoStart": true,
+    "time": 3,
+    "action": [
+      { "type": "play_music", "track": "audio/childrenofthecity.ogg"}
+    ]
+  },
+  {
+    "id": "music_araya",
+    "start": "manual",
+    "slot": "music",
+    "autoStart": true,
+    "time": 3,
+    "action": [
+      { "type": "play_music", "track": "audio/araya.ogg"}
+    ]
+  },
+  {
+    "id": "music_betweentwoworld_1",
+    "start": "manual",
+    "slot": "music",
+    "autoStart": true,
+    "time": 3,
+    "action": [
+      { "type": "play_music", "track": "audio/betweentwoworlds_1.ogg"}
+    ]
+  },
+  {
+    "id": "music_betweentwoworld_2",
+    "start": "manual",
+    "slot": "music",
+    "autoStart": true,
+    "time": 3,
+    "action": [
+      { "type": "play_music", "track": "audio/betweentwoworlds_2.ogg"}
+    ]
+  },
+  {
+    "id": "music_rendezvous",
+    "start": "manual",
+    "slot": "music",
+    "autoStart": true,
+    "time": 3,
+    "action": [
+      { "type": "play_music", "track": "audio/rendezvous.ogg"}
     ]
   }
 ]

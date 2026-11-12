@@ -228,4 +228,69 @@ public final class Actions {
             return true;
         }
     }
+
+    /** "random_create": 按权重随机创造一张卡牌（权重不需要总和为100，引擎自动计算）。 */
+    public static class RandomCreate extends Action {
+        public ArrayList<Option> options = new ArrayList<>();
+
+        public static class Option {
+            public String target;
+            public int weight = 1;
+        }
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            if (options.isEmpty()) return false;
+
+            // 1. 计算总权重
+            int totalWeight = 0;
+            for (Option o : options) totalWeight += o.weight;
+            if (totalWeight <= 0) return false;
+
+            // 2. 掷骰子
+            int roll = ctx.state.random.nextInt(totalWeight);
+
+            // 3. 找到命中的目标
+            int current = 0;
+            for (Option o : options) {
+                current += o.weight;
+                if (roll < current) {
+                    ctx.state.addCards(ctx.state.library.element(o.target), 1);
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    /** "random_do": 按权重随机执行一段动作代码。 */
+    public static class RandomDo extends Action {
+        public ArrayList<Option> options = new ArrayList<>();
+
+        public static class Option {
+            public int weight = 1;
+            public Action action; // 👈 这里可以塞入任何动作！
+        }
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            if (options.isEmpty()) return false;
+
+            int totalWeight = 0;
+            for (Option o : options) totalWeight += o.weight;
+            if (totalWeight <= 0) return false;
+
+            int roll = ctx.state.random.nextInt(totalWeight);
+            int current = 0;
+            for (Option o : options) {
+                current += o.weight;
+                if (roll < current) {
+                    if (o.action != null) {
+                        return o.action.execute(ctx); // 执行嵌套的动作
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
 }

@@ -4,7 +4,7 @@
 
   { "id": "eye", "stackable": true, "aspects": { "money": 1 }, "triggers": [ { "slot": "prepare", "event": "prepare_defense" } ], "image": "img/cards/money.png" },
 
-  { "id": "health", "stackable": true, "aspects": { "body": 1 }, "triggers": [ {"slot": "enhance", "event": "exercise"} ], "image": "img/cards/health.png" },
+  { "id": "health", "stackable": true, "aspects": { "body": 1 }, "triggers": [ {"slot": "enhance", "event": "exercise"}, {"slot": "music", "event": "findMusic"} ], "image": "img/cards/health.png" },
   { "id": "ex_health", "stackable": false, "aspects": { "tired": 1}, "lifetime": 60, "decayTo": "health","image": "img/cards/health.png"},
   { "id": "fitness", "stackable": false, "aspects": { "fitness": 1 }, "lifetime": 240, "triggers": [ { "slot": "enhance", "event": "health_learning"}], "image": "img/cards/fitness.png"},
   { "id": "fitness_learnt", "stackable": false, "aspects": { "fitness": 4 }, "lifetime": 360, "image": "img/cards/fitness_learnt.png"},
@@ -45,5 +45,13 @@
   { "id": "giovanni", "stackable": false, "aspects": {"human": 1, "wisdom": 2}, "lifetime": 60, "decayTo": "giovanni_2"},
   { "id": "giovanni_2", "stackable": false, "aspects": {"human": 1, "tired": 2}, "lifetime": 120, "decayTo": "giovanni"},
   { "id": "lisa", "stackable": false, "aspects": {"human": 1}},
-  { "id": "enoch", "stackable": false, "aspects": {"human": 1, "cogito": 40}}
+  { "id": "enoch", "stackable": false, "aspects": {"human": 1, "cogito": 40}},
+
+  { "id": "music_origin", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_origin"}]},
+  { "id": "music_saikai", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_saikai"}]},
+  { "id": "music_childrenofcity", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_childrenofcity"}]},
+  { "id": "music_araya", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_araya"}]},
+  { "id": "music_betweentwoworld_1", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_betweentwoworld_1"}]},
+  { "id": "music_betweentwoworld_2", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_betweentwoworld_2"}]},
+  { "id": "music_rendezvous", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_rendezvous"}], "image": "img/cards/rendezvous.png"}
 ]
