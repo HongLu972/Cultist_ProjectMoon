@@ -94,10 +94,8 @@ public class GameScreen implements Screen {
         setupPauseMenu();
         setupWorldInput();
 
-        // 修复 1：声明并赋值
         multiplexer = new InputMultiplexer(uiStage, worldStage);
         Gdx.input.setInputProcessor(multiplexer);
-        Gdx.input.setInputProcessor(multiplexer); // 修复 2：加上这句，不然鼠标点不动
 
         state.addListener((situation, event) -> {
             String key = "event." + event.id + ".result";
@@ -122,24 +120,11 @@ public class GameScreen implements Screen {
             }
         });
 
-        // 1. 伪造一个左上角的窗口图标（比如一个齿轮或者你喜欢的图片）
-        Image modIcon = new Image(ui.rect(new Color(0.4f, 0.3f, 0.5f, 1f))); // 如果没图片，就用纯色块
-        modIcon.setSize(32, 32);
-
-        // 2. 监听右键点击
-        modIcon.addListener(new ClickListener(Input.Buttons.RIGHT) {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                showModSystemMenu(modIcon);
-            }
-        });
-
         // --- 左上角系统菜单按钮 ---
         Table topLeftTable = new Table();
         topLeftTable.setFillParent(true);
         topLeftTable.top().left().pad(8);
 
-        // 直接用个明晃晃的按钮，不怕找不到喵！
         TextButton modMenuBtn = new TextButton("☰ 系统菜单", ui.buttonStyle());
         modMenuBtn.addListener(new ClickListener(Input.Buttons.LEFT) {
             @Override
@@ -150,27 +135,33 @@ public class GameScreen implements Screen {
 
         topLeftTable.add(modMenuBtn).size(110, 34);
         uiStage.addActor(topLeftTable);
+
         if (state.situations.isEmpty()) {
             spawnInitialEvents();
         }
         AudioManager.getInstance().playBgm("audio/bgm_game.ogg");
     }
 
+    // 👇 核心防御 1：坐标消毒剂
+    private float sanitizeCoord(float val, float maxBound) {
+        if (Float.isNaN(val) || Float.isInfinite(val)) return maxBound / 2f;
+        // 如果超出世界地图边界 2000 像素，直接拉回中心
+        if (val < -2000f || val > maxBound + 2000f) return maxBound / 2f;
+        return val;
+    }
+
     private void spawnInitialEvents() {
-        // 获取当前摄像机中心点（世界坐标）
         float centerX = worldStage.getCamera().position.x;
         float centerY = worldStage.getCamera().position.y;
 
         EventDef genEvent = state.events.get("delta");
         if (genEvent != null) {
-            // 绝望发生器生成在中心偏右上
             Situation s = state.openEventWindow(genEvent, null, centerX + 300, centerY + 100);
             s.start();
         }
 
         EventDef timeEvent = state.events.get("time_A");
         if (timeEvent != null) {
-            // 时间流逝生成在中心偏右下
             Situation s = state.openEventWindow(timeEvent, null, centerX + 300, centerY - 200);
             s.start();
         }
@@ -263,11 +254,10 @@ public class GameScreen implements Screen {
     }
 
     private void showModSystemMenu(Actor anchor) {
-        // 防止重复点击生成多个菜单
         for (Actor child : uiStage.getActors()) {
             if (child instanceof Table && "mod_menu".equals(child.getName())) {
                 child.remove();
-                return; // 如果菜单已经存在，点击就关闭它
+                return;
             }
         }
 
@@ -286,9 +276,7 @@ public class GameScreen implements Screen {
         });
         menuTable.add(btnEditor).width(200).height(40).row();
 
-        // 计算按钮在屏幕上的坐标，让菜单贴边弹出
         Vector2 pos = anchor.localToStageCoordinates(new Vector2(0, 0));
-        // 放在按钮正下方
         menuTable.setPosition(pos.x, pos.y - menuTable.getPrefHeight() - 10);
         uiStage.addActor(menuTable);
     }
@@ -370,7 +358,6 @@ public class GameScreen implements Screen {
             if (!(a instanceof WorldBackground)) a.remove();
         }
 
-        // 👇 核心修复：收集所有在槽里的卡牌实例
         java.util.Set<ElementInstance> slotCards = new java.util.HashSet<>();
         for (Situation s : state.situations) {
             for (Slot slot : s.slots) {
@@ -389,9 +376,10 @@ public class GameScreen implements Screen {
         }
 
         for (ElementInstance c : state.cards) {
-            if (slotCards.contains(c)) continue; // 👈 如果卡牌在这个集合里，就不画在桌面上
+            if (slotCards.contains(c)) continue;
             CardActor a = new CardActor(ui, c);
-            if (!Float.isNaN(c.x)) a.setPosition(c.x, c.y);
+            // 👇 核心防御 2：每次渲染前消毒卡牌坐标
+            if (!Float.isNaN(c.x)) a.setPosition(sanitizeCoord(c.x, state.worldWidth), sanitizeCoord(c.y, state.worldHeight));
             addSource(a);
             addSelectOnClick(a);
             addCardRightClick(a);
@@ -437,8 +425,9 @@ public class GameScreen implements Screen {
             @Override
             public DragAndDrop.Payload dragStart(InputEvent event, float x, float y, int pointer) {
                 if (actor.card.locked) return null;
-                grabX = x;
-                grabY = y;
+                // 👇 核心防御 3：防呆抓取坐标
+                grabX = Float.isNaN(x) ? CardActor.W / 2f : x;
+                grabY = Float.isNaN(y) ? CardActor.H / 2f : y;
                 hideInfo();
                 DragAndDrop.Payload p = new DragAndDrop.Payload();
                 p.setObject(actor.card);
@@ -452,13 +441,17 @@ public class GameScreen implements Screen {
                 actor.setVisible(true);
                 ElementInstance card = (ElementInstance) payload.getObject();
 
-                // 如果没有丢进槽位，就根据鼠标位置更新卡牌的世界坐标
                 if (target == null) {
                     detach(card);
                     Vector2 stagePos = new Vector2(event.getStageX(), event.getStageY());
                     worldGroup.stageToLocalCoordinates(stagePos);
-                    card.x = stagePos.x - grabX;
-                    card.y = stagePos.y - grabY;
+
+                    // 👇 核心防御 4：落地坐标消毒
+                    float rawX = stagePos.x - grabX;
+                    float rawY = stagePos.y - grabY;
+
+                    card.x = sanitizeCoord(rawX, state.worldWidth);
+                    card.y = sanitizeCoord(rawY, state.worldHeight);
                     dirty = true;
                 }
             }
@@ -492,8 +485,8 @@ public class GameScreen implements Screen {
                     detach(actor.card);
                     Vector2 stagePos = new Vector2(event.getStageX(), event.getStageY());
                     worldGroup.stageToLocalCoordinates(stagePos);
-                    actor.card.x = stagePos.x;
-                    actor.card.y = stagePos.y;
+                    actor.card.x = sanitizeCoord(stagePos.x, state.worldWidth);
+                    actor.card.y = sanitizeCoord(stagePos.y, state.worldHeight);
                     dirty = true;
                 }
                 event.stop();
@@ -578,7 +571,6 @@ public class GameScreen implements Screen {
         String title = ui.texts.get("element." + c.def.id + ".name", c.def.id);
         StringBuilder body = new StringBuilder(ui.texts.get("element." + c.def.id + ".desc", ""));
 
-        // 显示明面词条
         Map<String, Integer> currentAspects = c.visibleAspects();
         if (!currentAspects.isEmpty()) {
             body.append("\n\n").append(ui.texts.get("ui.aspects", "词条")).append(": ").append(aspectList(currentAspects));
@@ -645,7 +637,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // 只要 clock.paused 是 true，时间就不会走
         clock.update(delta, state);
 
         if (state.ending != null) {
@@ -654,7 +645,8 @@ public class GameScreen implements Screen {
             return;
         }
 
-        if (dirty || signature() != lastSignature) {
+        // 👇 核心防御 5：拖拽中绝对不重建！
+        if (!dnd.isDragging() && (dirty || signature() != lastSignature)) {
             rebuild();
             lastSignature = signature();
             dirty = false;
@@ -667,7 +659,11 @@ public class GameScreen implements Screen {
                 if (a.getStage() == null) worldStage.addActor(a);
                 tmp.set(Gdx.input.getX(), Gdx.input.getY());
                 worldStage.screenToStageCoordinates(tmp);
-                a.setPosition(tmp.x - grabX, tmp.y - grabY);
+
+                // 👇 核心防御 6：虚影跟随鼠标时也要消毒
+                float targetX = sanitizeCoord(tmp.x - grabX, STAGE_W);
+                float targetY = sanitizeCoord(tmp.y - grabY, STAGE_H);
+                a.setPosition(targetX, targetY);
             }
         }
 

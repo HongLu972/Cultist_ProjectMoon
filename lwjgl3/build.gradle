@@ -1,230 +1,34 @@
-
-buildscript {
-  repositories {
-    gradlePluginPortal()
-  }
-  dependencies {
-    classpath "io.github.fourlastor:construo:2.2.2"
-    if(enableGraalNative == 'true') {
-      classpath "org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin:0.9.28"
-    }
-  }
-}
 plugins {
-  id "application"
+  id 'java'
+  id 'application'
 }
-apply plugin: 'io.github.fourlastor.construo'
 
+java {
+  sourceCompatibility = JavaVersion.VERSION_17
+  targetCompatibility = JavaVersion.VERSION_17
+}
 
-import io.github.fourlastor.construo.Target
-
-sourceSets.main.resources.srcDirs += [ rootProject.file('assets').path ]
-application.mainClass = 'com.six.game.lwjgl3.Lwjgl3Launcher'
-application.applicationName = appName
-eclipse.project.name = appName + '-lwjgl3'
-java.sourceCompatibility = 17
-java.targetCompatibility = 17
-if (JavaVersion.current().isJava9Compatible()) {
-        compileJava.options.release.set(17)
+configurations {
+  natives
 }
 
 dependencies {
-  implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
-  implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
-  implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
   implementation project(':core')
-
-  if(enableGraalNative == 'true') {
-    implementation "io.github.berstanio:gdx-svmhelper-backend-lwjgl3:$graalHelperVersion"
-      implementation "io.github.berstanio:gdx-svmhelper-extension-freetype:$graalHelperVersion"
-
-  }
-  // Forces LWJGL3 to use at least $lwjgl3Version, currently 3.4.3, to avoid warnings on Java 25 and up.
-  constraints{
-    implementation("org.lwjgl:lwjgl:$lwjgl3Version")
-    implementation("org.lwjgl:lwjgl-glfw:$lwjgl3Version")
-    implementation("org.lwjgl:lwjgl-jemalloc:$lwjgl3Version")
-    implementation("org.lwjgl:lwjgl-openal:$lwjgl3Version")
-    implementation("org.lwjgl:lwjgl-opengl:$lwjgl3Version")
-    implementation("org.lwjgl:lwjgl-stb:$lwjgl3Version")
-  }
+  implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+  implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
 }
 
-def os = System.properties['os.name'].toLowerCase(Locale.ROOT)
+application {
+  mainClass = 'com.six.game.lwjgl3.Lwjgl3Launcher'
+}
 
 run {
-  workingDir = rootProject.file('assets').path
-// You can uncomment the next line if your IDE claims a build failure even when the app closed properly.
-  //setIgnoreExitValue(true)
-// The next two jvmArgs additions help LWJGL3 on JDK 24 and higher.
-  jvmArgs += "--enable-native-access=ALL-UNNAMED"
-  jvmArgs += "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED"
-// On macOS, we need to set this for the run task to allow debugging in IDEA or AS to work.
-  if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
-}
-
-jar {
-// sets the name of the .jar file this produces to the name of the game or app, with the version after.
-  archiveFileName.set("${appName}-${projectVersion}.jar")
-// the duplicatesStrategy matters starting in Gradle 7.0; this setting works.
-  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-  dependsOn configurations.runtimeClasspath
-  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
-// these "exclude" lines remove some unnecessary duplicate files in the output JAR.
-  exclude('META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
-  dependencies {
-    exclude('META-INF/INDEX.LIST', 'META-INF/maven/**')
-  }
-// Setting the manifest makes the JAR runnable.
-// Enabling native access helps avoid a warning when Java 24 or later runs the JAR.
-// Setting Multi-Release to true allows LWJGL3 to use different classes on recent Java versions.
-// This setting for Add-Exports ensures a warning on recent JDKs is avoided by LWJGL 3.4.2 and later.
-  manifest {
-    attributes 'Main-Class': application.mainClass, 'Enable-Native-Access': 'ALL-UNNAMED', 'Multi-Release': 'true', 'Add-Exports': 'java.base/jdk.internal.misc'
-  }
-// this last step may help on some OSes that need extra instruction to make runnable JARs.
-  doLast {
-    file(archiveFile).setExecutable(true, false)
-  }
-}
-
-// Builds a JAR that only includes the files needed to run on macOS, not Windows or Linux.
-// The file size for a Mac-only JAR is about 7MB smaller than a cross-platform JAR.
-tasks.register("jarMac") {
-  dependsOn("jar")
-  group("build")
-  jar.archiveFileName.set("${appName}-${projectVersion}-mac.jar")
-  jar.exclude("windows/x86/**", "windows/x64/**", "linux/arm32/**", "linux/arm64/**", "linux/x64/**", "**/*.dll", "**/*.so",
-    'META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
-  dependencies {
-    jar.exclude("windows/x86/**", "windows/x64/**", "linux/arm32/**", "linux/arm64/**", "linux/x64/**",
-      'META-INF/INDEX.LIST', 'META-INF/maven/**')
-  }
-}
-
-// Builds a JAR that only includes the files needed to run on Linux, not Windows or macOS.
-// The file size for a Linux-only JAR is about 5MB smaller than a cross-platform JAR.
-tasks.register("jarLinux") {
-  dependsOn("jar")
-  group("build")
-  jar.archiveFileName.set("${appName}-${projectVersion}-linux.jar")
-  jar.exclude("windows/x86/**", "windows/x64/**", "macos/arm64/**", "macos/x64/**", "**/*.dll", "**/*.dylib",
-    'META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
-  dependencies {
-    jar.exclude("windows/x86/**", "windows/x64/**", "macos/arm64/**", "macos/x64/**",
-      'META-INF/INDEX.LIST', 'META-INF/maven/**')
-  }
-}
-
-// Builds a JAR that only includes the files needed to run on Windows, not Linux or macOS.
-// The file size for a Windows-only JAR is about 6MB smaller than a cross-platform JAR.
-tasks.register("jarWin") {
-  dependsOn("jar")
-  group("build")
-  jar.archiveFileName.set("${appName}-${projectVersion}-win.jar")
-  jar.exclude("macos/arm64/**", "macos/x64/**", "linux/arm32/**", "linux/arm64/**", "linux/x64/**", "**/*.dylib", "**/*.so",
-    'META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
-  dependencies {
-    jar.exclude("macos/arm64/**", "macos/x64/**", "linux/arm32/**", "linux/arm64/**", "linux/x64/**",
-      'META-INF/INDEX.LIST', 'META-INF/maven/**')
-  }
-}
-
-construo {
-  // name of the executable
-  name.set(appName)
-  // human-readable name, used for example in the `.app` name for macOS
-  humanName.set(appName)
-  jlink {
-    guessModulesFromJar.set(false)
-    // You may need to add more modules, as needed.
-    modules.addAll("java.base", "java.management", "java.desktop", "jdk.unsupported")
-  }
-
-  targets.configure {
-    register("linuxX64", Target.Linux) {
-      architecture.set(Target.Architecture.X86_64)
-      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.10_7.tar.gz")
-      // Linux does not currently have a way to set the icon on the executable
-    }
-    register("macM1", Target.MacOs) {
-      architecture.set(Target.Architecture.AARCH64)
-      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.10_7.tar.gz")
-      // macOS needs an identifier
-      identifier.set("com.six.game." + appName)
-      // Optional: icon for macOS, as an ICNS file
-      macIcon.set(project.file("icons/logo.icns"))
-    }
-    register("macX64", Target.MacOs) {
-      architecture.set(Target.Architecture.X86_64)
-      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_mac_hotspot_21.0.10_7.tar.gz")
-      // macOS needs an identifier
-      identifier.set("com.six.game." + appName)
-      // Optional: icon for macOS, as an ICNS file
-      macIcon.set(project.file("icons/logo.icns"))
-    }
-    register("winX64", Target.Windows) {
-      architecture.set(Target.Architecture.X86_64)
-      // Optional: icon for Windows, as a PNG
-      icon.set(project.file("icons/logo.png"))
-      jdkUrl.set("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.10%2B7/OpenJDK21U-jdk_x64_windows_hotspot_21.0.10_7.zip")
-      // Uncomment the next line to show a console when the game runs, to print messages.
-      //useConsole.set(true)
-    }
-  }
-}
-
-// Equivalent to the jar task; here for compatibility with gdx-setup.
-tasks.register('dist') {
-  dependsOn 'jar'
-}
-
-distributions {
-  main {
-    contents {
-      into('libs') {
-        project.configurations.runtimeClasspath.files.findAll { file ->
-          file.getName() != project.tasks.jar.outputs.files.singleFile.name
-        }.each { file ->
-          exclude file.name
-        }
-      }
-    }
-  }
-}
-
-startScripts.dependsOn(':lwjgl3:jar')
-startScripts.classpath = project.tasks.jar.outputs.files
-
-// Helps if debugging on Linux with an Nvidia GPU.
-// This means StartupHelper won't try to restart the JVM, which can prevent debugging.
-// This only applies to Gradle tasks, not main methods debugged when launching a main() method directly.
-// As a more general solution, set the environment variable __GL_THREADED_OPTIMIZATIONS to 0 globally, on Linux
-// machines with Nvidia GPUs where you need to debug LWJGL3 apps and games.
-// You can also set __GL_THREADED_OPTIMIZATIONS to 0 in run configurations, which you would need per main() method.
-// StartupHelper will still restart the JVM to set this environment variable when run as a distributable JAR, which is
-// a good thing for end users. They won't need to ever set the debug-specific environment variable.
-tasks.withType(JavaExec.class).configureEach {
-  environment("__GL_THREADED_OPTIMIZATIONS", 0)
-}
-
-if(enableGraalNative == 'true') {
-  apply from: file("nativeimage.gradle")
-}
-
-// 让游戏运行时的工作目录定位到根目录的 assets 文件夹
-tasks.named('run') {
   workingDir = rootProject.file('assets')
-  if (!workingDir.exists()) {
-    workingDir = projectDir
-  }
+  setIgnoreExitValue(true)
 }
 
-// ==========================================
-// jpackage 傻瓜打包配置
-// ==========================================
-
-// 1. 把依赖收集到一个文件夹
+// 收集依赖
 tasks.register('copyDependencies', Copy) {
   dependsOn 'jar'
   from configurations.runtimeClasspath
@@ -232,34 +36,140 @@ tasks.register('copyDependencies', Copy) {
   into layout.buildDirectory.dir('jpackage-input')
 }
 
+def safeVersion = project.version.toString().replaceAll("[^0-9.]", "")
+if (safeVersion.isEmpty() || safeVersion.equals(".")) safeVersion = "1.0.0"
+
+def iconFile = rootProject.file('assets/img/icons/araya.ico')
+def iconPath = iconFile.exists() ? iconFile.absolutePath : ""
+
+def mainJarName = tasks.jar.archiveFile.get().asFile.name
+def currentJdkPath = System.getProperty('java.home')
+def inputDir = layout.buildDirectory.dir('jpackage-input').get().asFile.absolutePath
+
 // ==========================================
-// jpackage 本地免网络打包配置 (终极稳定版)
+// 任务 1：生成纯净版
 // ==========================================
-tasks.register('makeExe', Exec) {
-  // 确保 jar 和依赖都已经构建完毕
+tasks.register('makePureExe', Exec) {
   dependsOn 'jar', 'copyDependencies'
+  def outputDir = layout.buildDirectory.dir('jpackage-pure-output').get().asFile.absolutePath
 
   doFirst {
-    // 清理旧目录
-    delete layout.buildDirectory.dir('jpackage-output')
+    delete layout.buildDirectory.dir('jpackage-pure-output')
+    println "========================================="
+    println "Packaging Base EXE (Pure)..."
+    println "========================================="
+  }
 
-    // 核心修复：直接从 Gradle 的任务里拿 jar 名字，绝对不会错
-    def mainJarName = tasks.jar.archiveFile.get().asFile.name
+  def cmdArgs = [
+    '--type', 'app-image',
+    '--name', 'Cultist_ProjectMoon',
+    '--app-version', safeVersion,
+    '--input', inputDir,
+    '--main-jar', mainJarName,
+    '--main-class', 'com.six.game.lwjgl3.Lwjgl3Launcher',
+    '--dest', outputDir,
+    '--add-modules', 'java.base,java.desktop,jdk.unsupported,java.logging'
+  ]
+  if (iconPath) cmdArgs.addAll(['--icon', iconPath])
+  commandLine = ["${currentJdkPath}/bin/jpackage"] + cmdArgs
+}
 
-    def currentJdkPath = System.getProperty('java.home')
-    def inputDir = layout.buildDirectory.dir('jpackage-input').get().asFile.absolutePath
-    def outputDir = layout.buildDirectory.dir('jpackage-output').get().asFile.absolutePath
+// ==========================================
+// 任务 2：生成测试版（带控制台）
+// ==========================================
+tasks.register('makeTestExe', Exec) {
+  dependsOn 'jar', 'copyDependencies'
+  def outputDir = layout.buildDirectory.dir('jpackage-test-output').get().asFile.absolutePath
 
-    println "正在打包主程序: " + mainJarName
+  doFirst {
+    delete layout.buildDirectory.dir('jpackage-test-output')
+    println "========================================="
+    println "Packaging Test EXE (With CMD)..."
+    println "========================================="
+  }
 
-    // 设置执行命令
-    commandLine "${currentJdkPath}/bin/jpackage",
-      '--type', 'app-image',
-      '--name', 'Cultist_ProjectMoon',
-      '--input', inputDir,
-      '--main-jar', mainJarName,
-      '--main-class', 'com.six.game.lwjgl3.Lwjgl3Launcher',
-      '--dest', outputDir,
-      '--win-console'
+  def cmdArgs = [
+    '--type', 'app-image',
+    '--name', 'Cultist_ProjectMoon_Test',
+    '--app-version', safeVersion,
+    '--input', inputDir,
+    '--main-jar', mainJarName,
+    '--main-class', 'com.six.game.lwjgl3.Lwjgl3Launcher',
+    '--dest', outputDir,
+    '--add-modules', 'java.base,java.desktop,jdk.unsupported,java.logging',
+    '--win-console'
+  ]
+  if (iconPath) cmdArgs.addAll(['--icon', iconPath])
+  commandLine = ["${currentJdkPath}/bin/jpackage"] + cmdArgs
+}
+
+// ==========================================
+// 任务 3：完美合体，生成最终文件夹
+// ==========================================
+tasks.register('makeBothExe') {
+  dependsOn 'makePureExe', 'makeTestExe'
+
+  doLast {
+    def pureDir = layout.buildDirectory.dir('jpackage-pure-output/Cultist_ProjectMoon').get().asFile
+    def testDir = layout.buildDirectory.dir('jpackage-test-output/Cultist_ProjectMoon_Test').get().asFile
+    def finalDir = layout.buildDirectory.dir('jpackage-output').get().asFile
+
+    println "========================================="
+    println "Merging EXEs and generating mods..."
+
+    // 1. 清理并创建最终的根目录
+    if (finalDir.exists()) finalDir.deleteDir()
+    finalDir.mkdirs()
+
+    // 2. 将纯净版的所有内容（app, runtime, 纯exe）移动到最终目录
+    if (pureDir.exists()) {
+      java.nio.file.Files.move(new File(pureDir, "app").toPath(), new File(finalDir, "app").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+      java.nio.file.Files.move(new File(pureDir, "runtime").toPath(), new File(finalDir, "runtime").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+      java.nio.file.Files.move(new File(pureDir, "Cultist_ProjectMoon.exe").toPath(), new File(finalDir, "Cultist_ProjectMoon.exe").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+
+    // 3. 将测试版的 exe 和 cfg 移动到最终目录（共用同一个 app 和 runtime）
+    if (testDir.exists()) {
+      java.nio.file.Files.move(new File(testDir, "Cultist_ProjectMoon_Test.exe").toPath(), new File(finalDir, "Cultist_ProjectMoon_Test.exe").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+      java.nio.file.Files.move(new File(testDir, "app/Cultist_ProjectMoon_Test.cfg").toPath(), new File(finalDir, "app/Cultist_ProjectMoon_Test.cfg").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+
+    // 4. 清理旧文件夹
+    if (pureDir.exists()) pureDir.deleteDir()
+    if (testDir.exists()) testDir.deleteDir()
+    layout.buildDirectory.dir('jpackage-pure-output').get().asFile.deleteDir()
+    layout.buildDirectory.dir('jpackage-test-output').get().asFile.deleteDir()
+
+    // 5. 在最终目录生成 Origin 模组
+    def originModDir = new File(finalDir, 'mods/Origin')
+    if (originModDir.exists()) originModDir.deleteDir()
+    originModDir.mkdirs()
+
+    copy {
+      from rootProject.file('assets/data')
+      into originModDir
+      include '**/*.json'
+      exclude '**/save*.json'
+      exclude '**/slot_*.json'
+    }
+    copy { from rootProject.file('assets/img'); into new File(originModDir, 'img') }
+    copy { from rootProject.file('assets/audio'); into new File(originModDir, 'audio') }
+    copy { from rootProject.file('assets/font'); into new File(finalDir, 'font') }
+
+    // 6. 在最终目录生成 Bat 启动器
+    def batNames = [
+      ["Cultist_ProjectMoon_启动器.bat", "Cultist_ProjectMoon.exe"],
+      ["Cultist_ProjectMoon_Test_启动器.bat", "Cultist_ProjectMoon_Test.exe"]
+    ]
+    batNames.each { batInfo ->
+      def batFile = new File(finalDir, batInfo[0])
+      def batContent = "@echo off\r\ncd /d \"%~dp0\"\r\n\"%~dp0${batInfo[1]}\"\r\nif %errorlevel% neq 0 pause"
+      batFile.write(batContent, 'UTF-8')
+    }
+
+    println "========================================="
+    println "All EXEs successfully merged into:"
+    println "lwjgl3/build/jpackage-output"
+    println "========================================="
   }
 }

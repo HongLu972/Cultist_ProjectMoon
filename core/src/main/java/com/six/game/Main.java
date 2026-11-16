@@ -2,6 +2,7 @@ package com.six.game; // 如果你的包名是 com.six.game，请改为 package 
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.six.game.core.*;
 
 import java.util.ArrayList;
@@ -44,7 +45,35 @@ public class Main extends Game {
             fontScan += fallbackJson;
         }
 
-        ui = new Ui(Gdx.files.internal(FONT_PATH), fontScan, texts);
+        FileHandle fontFile = Gdx.files.internal(FONT_PATH);
+
+        // 如果 jar 包里没有，尝试去 mods/Origin 里找
+        if (!fontFile.exists()) {
+            fontFile = Gdx.files.local("mods/Origin/" + FONT_PATH);
+        }
+        // 如果还没有，尝试在外部的 font 文件夹找
+        if (!fontFile.exists()) {
+            fontFile = Gdx.files.local(FONT_PATH);
+        }
+        // 如果实在没有，暴力向上找 assets
+        if (!fontFile.exists()) {
+            java.io.File current = new java.io.File(System.getProperty("user.dir"));
+            for (int i = 0; i < 4; i++) {
+                java.io.File test = new java.io.File(current, "assets/" + FONT_PATH);
+                if (test.exists()) {
+                    fontFile = Gdx.files.absolute(test.getAbsolutePath());
+                    break;
+                }
+                current = current.getParentFile();
+                if (current == null) break;
+            }
+        }
+
+        if (!fontFile.exists()) {
+            System.err.println("【致命错误】找遍了宇宙也找不到字体喵！");
+        }
+
+        ui = new Ui(fontFile, fontScan, texts);
 
         // 播放主菜单音乐
         AudioManager.getInstance().playBgm("audio/bgm_menu.ogg");

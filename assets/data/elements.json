@@ -51,7 +51,7 @@
   { "id": "music_saikai", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_saikai"}]},
   { "id": "music_childrenofcity", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_childrenofcity"}]},
   { "id": "music_araya", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_araya"}]},
-  { "id": "music_betweentwoworld_1", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_betweentwoworld_1"}]},
-  { "id": "music_betweentwoworld_2", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_betweentwoworld_2"}]},
+  { "id": "music_betweentwoworld_1", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_betweentwoworld_1"}], "image": "img/cards/betweentwoworlds_1.png"},
+  { "id": "music_betweentwoworld_2", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_betweentwoworld_2"}], "image": "img/cards/betweentwoworlds_2.png"},
   { "id": "music_rendezvous", "stackable": true, "aspects": {"music": 1}, "triggers": [ {"slot": "music", "event": "music_rendezvous"}], "image": "img/cards/rendezvous.png"}
 ]

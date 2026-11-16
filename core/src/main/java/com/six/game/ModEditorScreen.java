@@ -210,6 +210,78 @@ public class ModEditorScreen implements Screen {
         stackBox.setChecked(editData != null && editData.stackable);
         form.add(stackBox).colspan(2).left().padBottom(15).row();
 
+        // ================== 图片选择与预览区 ==================
+        form.add(new Label("卡牌图片:", ui.labelStyle(Color.WHITE))).left().padRight(30).padBottom(15);
+
+        Table imgTable = new Table();
+        TextField imgField = new TextField(editData != null && editData.image != null ? editData.image : "img/cards/", ui.textFieldStyle());
+        imgField.setDisabled(true);
+        imgTable.add(imgField).width(220).padRight(10);
+
+        // 图片预览容器
+        Image imgPreview = new Image();
+        imgPreview.setScaling(com.badlogic.gdx.utils.Scaling.fit);
+        imgTable.add(imgPreview).size(80, 80).padRight(10); // 预览图固定 80x80
+
+        // 尝试加载当前已有的图片
+        String currentPath = imgField.getText();
+        if (currentPath != null && !currentPath.isEmpty() && !currentPath.equals("img/cards/")) {
+            com.badlogic.gdx.graphics.Texture tex = ui.texture("mods/" + currentModName + "/" + currentPath);
+            if (tex != null) imgPreview.setDrawable(new com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(tex));
+        }
+
+        TextButton selectImgBtn = new TextButton("上传新图片", ui.buttonStyle());
+        selectImgBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // 核心修复：使用 AWT 的原生 FileDialog，直接调用 Windows/Mac 的系统级选图界面喵！
+                // 必须放在一个新线程里，否则会卡死 LibGDX 的渲染线程
+                new Thread(() -> {
+                    java.awt.FileDialog fd = new java.awt.FileDialog((java.awt.Frame) null, "选择卡牌图片 (推荐 PNG)", java.awt.FileDialog.LOAD);
+                    fd.setFilenameFilter((dir, name) -> name.toLowerCase().endsWith(".png") || name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".jpeg"));
+                    fd.setVisible(true);
+
+                    String fileName = fd.getFile();
+                    String dirName = fd.getDirectory();
+
+                    // 如果用户点了取消，直接返回
+                    if (fileName == null) return;
+
+                    java.io.File selectedFile = new java.io.File(dirName, fileName);
+                    String ext = fileName.substring(fileName.lastIndexOf("."));
+
+                    String cardId = idField.getText().trim();
+                    if (cardId.isEmpty()) cardId = "new_card";
+
+                    FileHandle targetDir = Gdx.files.local("mods/" + currentModName + "/img/cards/");
+                    targetDir.mkdirs();
+                    FileHandle targetFile = targetDir.child(cardId + ext);
+
+                    try {
+                        byte[] imageBytes = java.nio.file.Files.readAllBytes(selectedFile.toPath());
+                        targetFile.writeBytes(imageBytes, false);
+
+                        String finalCardId = cardId;
+                        // 必须回到主线程更新 UI
+                        Gdx.app.postRunnable(() -> {
+                            imgField.setText("img/cards/" + finalCardId + ext);
+                            statusLabel.setText("图片已保存并重命名喵！");
+
+                            com.badlogic.gdx.graphics.Texture newTex = new com.badlogic.gdx.graphics.Texture(targetFile);
+                            imgPreview.setDrawable(new com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(newTex));
+                        });
+
+                    } catch (Exception e) {
+                        Gdx.app.postRunnable(() -> statusLabel.setText("图片复制失败: " + e.getMessage()));
+                    }
+                }).start(); // 启动线程
+            }
+        });
+        imgTable.add(selectImgBtn).size(120, 40);
+
+        form.add(imgTable).left().colspan(2).padBottom(15).row();
+        // =======================================================
+
         // 属性
         Table aspectBox = new Table();
         aspectBox.add(new Label("属性:", ui.labelStyle(Color.WHITE))).left().colspan(4).row();
