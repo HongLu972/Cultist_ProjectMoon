@@ -78,13 +78,26 @@ public class Ui implements Disposable {
         if (path == null || path.isEmpty()) return null;
         if (textures.containsKey(path)) return textures.get(path);
 
-        // 核心：先去 mods 目录里找有没有同路径的图片
-        FileHandle fh = findInMods(path);
+        FileHandle fh = Gdx.files.internal(path);
+
+        // 👇 如果 internal 找不到，就依次去 local、assets、mods/Origin 里找！
+        if (!fh.exists()) fh = Gdx.files.local(path);
+        if (!fh.exists()) fh = Gdx.files.local("assets/" + path);
+        if (!fh.exists()) fh = Gdx.files.local("mods/Origin/" + path);
+
         Texture t = null;
-        if (fh != null && fh.exists()) {
-            t = new Texture(fh);
-            t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        if (fh.exists()) {
+            try {
+                t = new Texture(fh);
+                t.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+            } catch (Exception e) {
+                System.err.println("[Ui] 图片格式错误: " + path);
+            }
+        } else {
+            // 如果满世界都找不到，就打印出来，方便我们找内鬼
+            System.err.println("[Ui] 警告: 找不到图片 -> " + path);
         }
+
         textures.put(path, t);
         return t;
     }

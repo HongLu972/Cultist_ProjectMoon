@@ -18,7 +18,7 @@ public class AudioManager {
         return instance;
     }
 
-    // 👇 核心修复：音频穿透读取魔法
+    // 👇 音乐路径兜底：内部找不到就去外部找！
     private FileHandle findAudio(String path) {
         FileHandle fh = Gdx.files.internal(path);
         if (fh.exists()) return fh;
@@ -29,36 +29,33 @@ public class AudioManager {
         fh = Gdx.files.local("assets/" + path);
         if (fh.exists()) return fh;
 
-        // 暴力向上级找 assets（针对 IDEA 运行环境）
-        File current = new File(System.getProperty("user.dir"));
-        for (int i = 0; i < 4; i++) {
-            File test = new File(current, "assets/" + path);
-            if (test.exists()) return Gdx.files.absolute(test.getAbsolutePath());
-            current = current.getParentFile();
-            if (current == null) break;
-        }
-        return Gdx.files.internal(path); // 实在找不到就抛错吧
+        fh = Gdx.files.local("mods/Origin/" + path);
+        if (fh.exists()) return fh;
+
+        // 终极绝杀：直接在当前运行目录找
+        File file = new File(path);
+        if (file.exists()) return Gdx.files.absolute(file.getAbsolutePath());
+
+        return Gdx.files.internal(path);
     }
 
     public void playBgm(String path) {
         if (path == null || path.isEmpty()) return;
         if (path.equals(currentBgmPath) && currentBgm != null && currentBgm.isPlaying()) return;
 
-        // 暴力防叠加
         for (Music m : bgmCache.values()) {
             if (m != null) { m.stop(); m.setPosition(0f); }
         }
 
         if (!bgmCache.containsKey(path)) {
             try {
-                // 👇 用魔法方法找文件
                 FileHandle fh = findAudio(path);
                 Music music = Gdx.audio.newMusic(fh);
                 music.setLooping(true);
                 bgmCache.put(path, music);
             } catch (Exception e) {
                 Gdx.app.error("AudioManager", "Audio load failed: " + path, e);
-                return; // 没声音就算了，绝对不让游戏崩溃喵！
+                return;
             }
         }
 

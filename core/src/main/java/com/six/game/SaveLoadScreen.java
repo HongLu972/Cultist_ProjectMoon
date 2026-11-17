@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.six.game.core.GameState;
@@ -60,9 +61,8 @@ public class SaveLoadScreen implements Screen {
         for (int i = 1; i <= 20; i++) {
             final int slot = i;
             String saveName = getSaveName(slot);
-            boolean exists = !saveName.equals("空存档");
+            boolean exists = !saveName.equals("空存档") && !saveName.equals("损坏的存档");
 
-            // 如果存档存在，显示名字；不存在，显示空
             String btnText = slot + " : " + saveName;
             TextButton slotBtn = new TextButton(btnText, ui.buttonStyle());
 
@@ -89,22 +89,22 @@ public class SaveLoadScreen implements Screen {
         FileHandle file = Gdx.files.local("saves/slot_" + slot + ".json");
         if (!file.exists()) return "空存档";
         try {
-            SaveData data = new com.badlogic.gdx.utils.Json().fromJson(SaveData.class, file.readString());
+            SaveData data = new Json().fromJson(SaveData.class, file.readString());
             if (data.saveName != null && !data.saveName.isEmpty()) {
                 return data.saveName;
             }
         } catch (Exception e) {
+            // 👇 如果解析 JSON 失败，就把它标记为损坏的存档，不崩溃！
             return "损坏的存档";
         }
         return "未命名存档";
     }
 
-    // 弹出输入名字的窗口
     private void showNameDialog(int slot) {
         Table overlay = new Table();
         overlay.setFillParent(true);
         overlay.setBackground(ui.rect(new Color(0, 0, 0, 0.8f)));
-        overlay.setTouchable(Touchable.enabled); // 拦截底层点击
+        overlay.setTouchable(Touchable.enabled);
 
         Table window = new Table();
         window.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
@@ -143,27 +143,62 @@ public class SaveLoadScreen implements Screen {
 
         overlay.add(window);
         stage.addActor(overlay);
-        stage.setKeyboardFocus(input); // 自动把光标聚焦到输入框
+        stage.setKeyboardFocus(input);
     }
 
     private void saveToSlot(int slot, String name) {
         if (currentState == null) return;
         SaveData data = currentState.createSaveData();
         data.saveName = name;
-        String json = new com.badlogic.gdx.utils.Json().toJson(data);
+        String json = new Json().toJson(data);
         Gdx.files.local("saves/").mkdirs();
         Gdx.files.local("saves/slot_" + slot + ".json").writeString(json, false);
     }
 
     private void loadFromSlot(int slot) {
-        String json = Gdx.files.local("saves/slot_" + slot + ".json").readString();
-        SaveData data = new com.badlogic.gdx.utils.Json().fromJson(SaveData.class, json);
-        ((Main) Gdx.app.getApplicationListener()).loadFromData(data);
+        try {
+            String json = Gdx.files.local("saves/slot_" + slot + ".json").readString();
+            SaveData data = new Json().fromJson(SaveData.class, json);
+
+            // 如果解析成功，就交给 Main 处理
+            ((Main) Gdx.app.getApplicationListener()).loadFromData(data);
+        } catch (Exception e) {
+            // 👇 如果解析崩溃，弹出报错但不退出游戏
+            Gdx.app.error("SaveLoadScreen", "存档解析失败", e);
+            showErrorDialog("存档已损坏，无法读取喵！\n" + e.getMessage());
+        }
+    }
+
+    private void showErrorDialog(String message) {
+        Table overlay = new Table();
+        overlay.setFillParent(true);
+        overlay.setBackground(ui.rect(new Color(0, 0, 0, 0.8f)));
+        overlay.setTouchable(Touchable.enabled);
+
+        Table window = new Table();
+        window.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
+        window.pad(20);
+
+        Label label = new Label(message, ui.labelStyle(Color.SALMON));
+        label.setWrap(true);
+        window.add(label).width(400).padBottom(20).row();
+
+        TextButton closeBtn = new TextButton("确定", ui.buttonStyle());
+        closeBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                overlay.remove();
+            }
+        });
+        window.add(closeBtn).width(120).height(40);
+
+        overlay.add(window);
+        stage.addActor(overlay);
     }
 
     @Override public void show() { Gdx.input.setInputProcessor(stage); }
     @Override public void render(float delta) {
-        ScreenUtils.clear(0.06f, 0.05f, 0.08f, 1f);
+        ScreenUtils.clear(0.06f, 0.05f, 0.08f, 0.1f);
         stage.act(delta);
         stage.draw();
     }

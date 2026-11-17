@@ -17,8 +17,7 @@ dependencies {
   implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
   implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
-
-  // 👇 任务栏魔法必须的依赖
+  // 如果你的 Lwjgl3Launcher 里还在用 JNA，把下面这行留着；如果删了 JNA 代码，这行也可以删。
   implementation 'net.java.dev.jna:jna:5.13.0'
 }
 
@@ -57,9 +56,7 @@ tasks.register('makePureExe', Exec) {
 
   doFirst {
     delete layout.buildDirectory.dir('jpackage-pure-output')
-    println "========================================="
     println "Packaging Base EXE (Pure)..."
-    println "========================================="
   }
 
   def cmdArgs = [
@@ -85,9 +82,7 @@ tasks.register('makeTestExe', Exec) {
 
   doFirst {
     delete layout.buildDirectory.dir('jpackage-test-output')
-    println "========================================="
     println "Packaging Test EXE (With CMD)..."
-    println "========================================="
   }
 
   def cmdArgs = [
@@ -106,7 +101,7 @@ tasks.register('makeTestExe', Exec) {
 }
 
 // ==========================================
-// 任务 3：完美合体 + 自动生成快捷方式
+// 任务 3：纯绿色合体，无快捷方式！
 // ==========================================
 tasks.register('makeBothExe') {
   dependsOn 'makePureExe', 'makeTestExe'
@@ -122,7 +117,7 @@ tasks.register('makeBothExe') {
     if (finalDir.exists()) finalDir.deleteDir()
     finalDir.mkdirs()
 
-    // 1. 移动文件
+    // 1. 把 exe、app、runtime 直接放到根目录
     if (pureDir.exists()) {
       java.nio.file.Files.move(new File(pureDir, "app").toPath(), new File(finalDir, "app").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
       java.nio.file.Files.move(new File(pureDir, "runtime").toPath(), new File(finalDir, "runtime").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
@@ -133,7 +128,6 @@ tasks.register('makeBothExe') {
       java.nio.file.Files.move(new File(testDir, "app/Cultist_ProjectMoon_Test.cfg").toPath(), new File(finalDir, "app/Cultist_ProjectMoon_Test.cfg").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
 
-    // 清理临时目录
     if (pureDir.exists()) pureDir.deleteDir()
     if (testDir.exists()) testDir.deleteDir()
     layout.buildDirectory.dir('jpackage-pure-output').get().asFile.deleteDir()
@@ -153,33 +147,22 @@ tasks.register('makeBothExe') {
     copy { from rootProject.file('assets/audio'); into new File(originModDir, 'audio') }
     copy { from rootProject.file('assets/font'); into new File(finalDir, 'font') }
 
-    // 👈 把 ico 复制到根目录，让它成为文件而不是文件夹
+    // 把 ico 直接扔在根目录，和 exe 当邻居！
     copy { from rootProject.file('assets/img/icons/araya.ico'); into finalDir }
 
-    // 3. 👇 纯 PowerShell 直接生成快捷方式，不整那些虚的！
-    def psScript = """
-            \$WshShell = New-Object -ComObject WScript.Shell;
-
-            \$Shortcut = \$WshShell.CreateShortcut('${finalDir.absolutePath}\\启动游戏.lnk');
-            \$Shortcut.TargetPath = '${finalDir.absolutePath}\\Cultist_ProjectMoon.exe';
-            \$Shortcut.WorkingDirectory = '${finalDir.absolutePath}';
-            \$Shortcut.IconLocation = '${finalDir.absolutePath}\\araya.ico';
-            \$Shortcut.Save();
-
-            \$ShortcutTest = \$WshShell.CreateShortcut('${finalDir.absolutePath}\\测试模式.lnk');
-            \$ShortcutTest.TargetPath = '${finalDir.absolutePath}\\Cultist_ProjectMoon_Test.exe';
-            \$ShortcutTest.WorkingDirectory = '${finalDir.absolutePath}';
-            \$ShortcutTest.IconLocation = '${finalDir.absolutePath}\\araya.ico';
-            \$ShortcutTest.Save();
-        """
-
-    // 执行 PowerShell
-    def pb = new ProcessBuilder("powershell", "-NoProfile", "-Command", psScript)
-    pb.inheritIO()
-    pb.start().waitFor()
+    // 3. 只保留最朴素的 Bat 启动器（如果你连这个都不想要，直接把这行代码也删了）
+    def batNames = [
+      ["Cultist_ProjectMoon_启动器.bat", "Cultist_ProjectMoon.exe"],
+      ["Cultist_ProjectMoon_Test_启动器.bat", "Cultist_ProjectMoon_Test.exe"]
+    ]
+    batNames.each { batInfo ->
+      def batFile = new File(finalDir, batInfo[0])
+      def batContent = "@echo off\r\ncd /d \"%~dp0\"\r\n\"%~dp0${batInfo[1]}\"\r\nif %errorlevel% neq 0 pause"
+      batFile.write(batContent, 'UTF-8')
+    }
 
     println "========================================="
-    println "All EXEs successfully merged and shortcuts created!"
+    println "All EXEs successfully merged into:"
     println "lwjgl3/build/jpackage-output"
     println "========================================="
   }

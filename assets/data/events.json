@@ -141,7 +141,7 @@
       {"type": "create", "target": "elijah", "amount": 1},
       {"type": "consume", "target": "money", "amount": 2},
       {"type": "consume", "target": "human", "amount": 1},
-      {"type": "create", "target": "carmen"}
+      {"type": "create", "target": "carmen", "amount": 1}
     ]
   },
   {
@@ -200,7 +200,40 @@
         "onFail": [ { "type": "trigger", "event": "illness" } ]
       },
       { "type": "trigger", "event": "time_pass_insitute"},
-      { "type": "consume", "target": "eye", "amount": 1}
+      { "type": "consume", "target": "eye", "amount": 1},
+      { "type": "random_do", "options": [
+        {
+          "weight": 10,
+          "action": {
+            "type": "trigger", "event": "illness_2"
+          }
+        },
+        {
+          "weight": 90,
+          "action": {
+            "type": "create", "target": "music_rendezvous", "amount": 1
+          }
+        }
+      ]}
+    ]
+  },
+  {
+    "id": "illness_2",
+    "start": "manual",
+    "slot": "none",
+    "autoStart": true,
+    "time": 60,
+    "forceDrainAspects": [ "health" ],
+    "slots": [ {"id": "illness_2_slot"} ],
+    "action": [
+      {
+        "type": "check", "aspects": {"body": 1},
+        "onFail": [ {"type": "end_game", "ending": "poverty"} ],
+        "onSuccess": [
+          {"type": "consume", "target": "health", "amount": 1},
+          {"type": "create", "target": "disease_flu", "amount": 1}
+        ]
+      }
     ]
   },
   {
@@ -226,7 +259,7 @@
     "id": "health_learnt_1",
     "start": "manual",
     "slot": "enhance",
-    "autoStart": "false",
+    "autoStart": false,
     "time": 60,
     "slots": [ {"id": "health_learnt_1_slot"}],
     "input": {"fitness": 4, "ability": 1},
@@ -243,7 +276,7 @@
     "id": "health_learnt_2",
     "start": "manual",
     "slot": "enhance",
-    "autoStart": "false",
+    "autoStart": false,
     "time": 60,
     "slots": [ {"id": "health_learnt_2_slot"}, {"id": "health_learnt_2_slot_2"}],
     "input": {"fitness": 8, "ability": 2},
@@ -260,7 +293,7 @@
     "id": "health_learnt_3",
     "start": "manual",
     "slot": "enhance",
-    "autoStart": "false",
+    "autoStart": false,
     "time": 60,
     "slots": [ {"id": "health_learnt_3_slot"}, {"id": "health_learnt_3_slot_2"}],
     "input": {"fitness": 12, "ability": 3},

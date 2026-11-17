@@ -123,19 +123,24 @@ public class GameState {
 
         java.util.Map<String, ElementInstance> saveIdMap = new java.util.HashMap<>();
 
-        // 1. 先恢复所有卡牌
+        // 1. 先恢复所有卡牌（必须先在桌面上生成，才能塞进槽里）
         for (SaveData.CardData cd : data.cards) {
+            // 👇 【核心修复】如果卡牌的 ID 找不到（比如被删了），直接跳过不崩溃！
+            if (!library.has(cd.defId)) {
+                System.err.println("[警告] 存档损坏：找不到卡牌 " + cd.defId + "，已跳过。");
+                continue;
+            }
             ElementInstance c = createCardDirect(library.element(cd.defId));
             c.count = cd.count;
-            c.x = cd.x;
-            c.y = cd.y;
+
+            // 坐标兜底，防止 NaN 导致的飞雷神
+            c.x = (cd.x < -10000f) ? Float.NaN : cd.x;
+            c.y = (cd.y < -10000f) ? Float.NaN : cd.y;
+
             c.locked = cd.locked;
             c.remaining = cd.remaining;
             c.tempSaveId = cd.saveId;
-
-            // 【修复】把存档里的临时属性恢复给这张卡！
             c.tempAspects = cd.tempAspects != null ? new HashMap<>(cd.tempAspects) : new HashMap<>();
-
             saveIdMap.put(cd.saveId, c);
         }
 
@@ -153,7 +158,12 @@ public class GameState {
                 s.x = sd.x;
                 s.y = sd.y;
             }
-            if (s == null) continue;
+
+            // 👇 【核心防弹】如果找不到对应的事件或行动，直接跳过这个窗口！
+            if (s == null) {
+                System.err.println("[警告] 存档损坏：找不到对应的窗口，已跳过。");
+                continue;
+            }
 
             // 【核心修复】清空默认槽位，用存下来的真实 ID 重建！
             s.slots.clear();
@@ -167,6 +177,7 @@ public class GameState {
             // 【核心修复 2】把卡牌安全地塞进去，并抹除坐标
             for (int i = 0; i < sd.slotSaveIds.size(); i++) {
                 String saveId = sd.slotSaveIds.get(i);
+                // 如果卡牌在第一步损坏被跳过了，这里就不会塞入，也不会报错
                 if (!saveId.equals("null") && saveIdMap.containsKey(saveId)) {
                     ElementInstance c = saveIdMap.get(saveId);
                     s.slots.get(i).content = c;
@@ -176,7 +187,7 @@ public class GameState {
                 }
             }
 
-            // 恢复运行状态
+            // 恢复运行状态（全带 has() 校验，防弹）
             if (sd.selectedEventId != null && events.has(sd.selectedEventId)) {
                 s.selected = events.get(sd.selectedEventId);
             }
