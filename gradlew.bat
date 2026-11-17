@@ -17,6 +17,7 @@
 @rem
 
 @if "%DEBUG%"=="" @echo off
+set JAVA_HOME=E:\JDK\JDK 17
 @rem ##########################################################################
 @rem
 @rem  gradlew startup script for Windows

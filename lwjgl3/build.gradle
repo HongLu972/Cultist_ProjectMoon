@@ -17,6 +17,9 @@ dependencies {
   implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
   implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
+
+  // 👇 任务栏魔法必须的依赖
+  implementation 'net.java.dev.jna:jna:5.13.0'
 }
 
 application {
@@ -28,7 +31,6 @@ run {
   setIgnoreExitValue(true)
 }
 
-// 收集依赖
 tasks.register('copyDependencies', Copy) {
   dependsOn 'jar'
   from configurations.runtimeClasspath
@@ -75,7 +77,7 @@ tasks.register('makePureExe', Exec) {
 }
 
 // ==========================================
-// 任务 2：生成测试版（带控制台）
+// 任务 2：生成测试版
 // ==========================================
 tasks.register('makeTestExe', Exec) {
   dependsOn 'jar', 'copyDependencies'
@@ -104,7 +106,7 @@ tasks.register('makeTestExe', Exec) {
 }
 
 // ==========================================
-// 任务 3：完美合体，生成最终文件夹
+// 任务 3：完美合体 + 自动生成快捷方式
 // ==========================================
 tasks.register('makeBothExe') {
   dependsOn 'makePureExe', 'makeTestExe'
@@ -117,34 +119,29 @@ tasks.register('makeBothExe') {
     println "========================================="
     println "Merging EXEs and generating mods..."
 
-    // 1. 清理并创建最终的根目录
     if (finalDir.exists()) finalDir.deleteDir()
     finalDir.mkdirs()
 
-    // 2. 将纯净版的所有内容（app, runtime, 纯exe）移动到最终目录
+    // 1. 移动文件
     if (pureDir.exists()) {
       java.nio.file.Files.move(new File(pureDir, "app").toPath(), new File(finalDir, "app").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
       java.nio.file.Files.move(new File(pureDir, "runtime").toPath(), new File(finalDir, "runtime").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
       java.nio.file.Files.move(new File(pureDir, "Cultist_ProjectMoon.exe").toPath(), new File(finalDir, "Cultist_ProjectMoon.exe").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
-
-    // 3. 将测试版的 exe 和 cfg 移动到最终目录（共用同一个 app 和 runtime）
     if (testDir.exists()) {
       java.nio.file.Files.move(new File(testDir, "Cultist_ProjectMoon_Test.exe").toPath(), new File(finalDir, "Cultist_ProjectMoon_Test.exe").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
       java.nio.file.Files.move(new File(testDir, "app/Cultist_ProjectMoon_Test.cfg").toPath(), new File(finalDir, "app/Cultist_ProjectMoon_Test.cfg").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
 
-    // 4. 清理旧文件夹
+    // 清理临时目录
     if (pureDir.exists()) pureDir.deleteDir()
     if (testDir.exists()) testDir.deleteDir()
     layout.buildDirectory.dir('jpackage-pure-output').get().asFile.deleteDir()
     layout.buildDirectory.dir('jpackage-test-output').get().asFile.deleteDir()
 
-    // 5. 在最终目录生成 Origin 模组
+    // 2. 生成 Origin 模组、字体、图标
     def originModDir = new File(finalDir, 'mods/Origin')
-    if (originModDir.exists()) originModDir.deleteDir()
     originModDir.mkdirs()
-
     copy {
       from rootProject.file('assets/data')
       into originModDir
@@ -156,19 +153,33 @@ tasks.register('makeBothExe') {
     copy { from rootProject.file('assets/audio'); into new File(originModDir, 'audio') }
     copy { from rootProject.file('assets/font'); into new File(finalDir, 'font') }
 
-    // 6. 在最终目录生成 Bat 启动器
-    def batNames = [
-      ["Cultist_ProjectMoon_启动器.bat", "Cultist_ProjectMoon.exe"],
-      ["Cultist_ProjectMoon_Test_启动器.bat", "Cultist_ProjectMoon_Test.exe"]
-    ]
-    batNames.each { batInfo ->
-      def batFile = new File(finalDir, batInfo[0])
-      def batContent = "@echo off\r\ncd /d \"%~dp0\"\r\n\"%~dp0${batInfo[1]}\"\r\nif %errorlevel% neq 0 pause"
-      batFile.write(batContent, 'UTF-8')
-    }
+    // 👈 把 ico 复制到根目录，让它成为文件而不是文件夹
+    copy { from rootProject.file('assets/img/icons/araya.ico'); into finalDir }
+
+    // 3. 👇 纯 PowerShell 直接生成快捷方式，不整那些虚的！
+    def psScript = """
+            \$WshShell = New-Object -ComObject WScript.Shell;
+
+            \$Shortcut = \$WshShell.CreateShortcut('${finalDir.absolutePath}\\启动游戏.lnk');
+            \$Shortcut.TargetPath = '${finalDir.absolutePath}\\Cultist_ProjectMoon.exe';
+            \$Shortcut.WorkingDirectory = '${finalDir.absolutePath}';
+            \$Shortcut.IconLocation = '${finalDir.absolutePath}\\araya.ico';
+            \$Shortcut.Save();
+
+            \$ShortcutTest = \$WshShell.CreateShortcut('${finalDir.absolutePath}\\测试模式.lnk');
+            \$ShortcutTest.TargetPath = '${finalDir.absolutePath}\\Cultist_ProjectMoon_Test.exe';
+            \$ShortcutTest.WorkingDirectory = '${finalDir.absolutePath}';
+            \$ShortcutTest.IconLocation = '${finalDir.absolutePath}\\araya.ico';
+            \$ShortcutTest.Save();
+        """
+
+    // 执行 PowerShell
+    def pb = new ProcessBuilder("powershell", "-NoProfile", "-Command", psScript)
+    pb.inheritIO()
+    pb.start().waitFor()
 
     println "========================================="
-    println "All EXEs successfully merged into:"
+    println "All EXEs successfully merged and shortcuts created!"
     println "lwjgl3/build/jpackage-output"
     println "========================================="
   }

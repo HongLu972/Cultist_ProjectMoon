@@ -3,11 +3,28 @@ package com.six.game.lwjgl3;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.six.game.Main;
+import com.sun.jna.Library;
+import com.sun.jna.Native;
 
 import java.io.File;
 
 public class Lwjgl3Launcher {
+
+    // 👇 核心魔法：手写一个 JNA 接口，调用 Windows 底层 API
+    public interface Shell32 extends Library {
+        Shell32 INSTANCE = Native.load("shell32", Shell32.class);
+        int SetCurrentProcessExplicitAppUserModelID(String AppID);
+    }
+
     public static void main(String[] args) {
+        // 👇 强行给进程打上专属身份 ID，让任务栏认准这个 exe！
+        try {
+            Shell32.INSTANCE.SetCurrentProcessExplicitAppUserModelID("com.six.game.projectmoon");
+            System.out.println("[Launcher] 任务栏身份 ID 绑定成功喵！");
+        } catch (Throwable t) {
+            System.err.println("[Launcher] 绑定失败: " + t.getMessage());
+        }
+
         createApplication();
     }
 
@@ -21,7 +38,7 @@ public class Lwjgl3Launcher {
         String title = "月计模拟器";
         String iconPath = "img/icons/araya.png";
 
-        // 1. 寻找 config.json
+        // 读取配置文件
         File configFile = new File("data/config.json");
         if (!configFile.exists()) configFile = new File("mods/Origin/config.json");
         if (!configFile.exists()) configFile = new File("assets/data/config.json");
@@ -39,37 +56,22 @@ public class Lwjgl3Launcher {
 
         configuration.setTitle(title);
 
-        // 👇 核心魔法：用最原生的 Java File 去满世界找这张图！
-        File pngFile = new File(iconPath);
-        if (!pngFile.exists()) pngFile = new File("assets/" + iconPath);
-        if (!pngFile.exists()) pngFile = new File("mods/Origin/" + iconPath);
+        // 👇 增强版：安全设置窗口左上角图标
+        try {
+            File pngFile = new File(iconPath);
+            if (!pngFile.exists()) pngFile = new File("assets/" + iconPath);
+            if (!pngFile.exists()) pngFile = new File("mods/Origin/" + iconPath);
 
-        // 如果还找不到，就暴力往上翻目录找 assets
-        if (!pngFile.exists()) {
-            File current = new File(System.getProperty("user.dir"));
-            for (int i = 0; i < 4; i++) {
-                File test = new File(current, "assets/" + iconPath);
-                if (test.exists()) {
-                    pngFile = test;
-                    break;
-                }
-                current = current.getParentFile();
-                if (current == null) break;
-            }
-        }
-
-        // 只有确确实实找到了文件，才敢喂给 LibGDX，并且传绝对路径！
-        if (pngFile.exists()) {
-            System.out.println("[Launcher] 准备加载图标: " + pngFile.getAbsolutePath());
-            try {
-                // 注意：这里使用绝对路径，底层 C++ 能直接精准定位！
+            if (pngFile.exists()) {
+                System.out.println("[Launcher] 使用绝对路径加载图标: " + pngFile.getAbsolutePath());
                 configuration.setWindowIcon(pngFile.getAbsolutePath());
-            } catch (Throwable t) {
-                System.err.println("[Launcher] 警告: 图标损坏或尺寸过大，已放弃设置图标。");
+            } else {
+                System.out.println("[Launcher] 找不到图标，尝试相对路径。");
+                configuration.setWindowIcon(iconPath);
             }
-        } else {
-            System.out.println("[Launcher] 找不到图标文件，跳过设置。");
-            // 千万别调 setWindowIcon，直接跳过，游戏就能正常启动！
+        } catch (Throwable t) {
+            // 终极防弹衣：无论发生什么图片解析错误，绝对不让游戏崩溃！
+            System.err.println("[Launcher] 窗口图标加载失败，已跳过。");
         }
 
         configuration.useVsync(true);
