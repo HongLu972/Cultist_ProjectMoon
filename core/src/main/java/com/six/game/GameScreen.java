@@ -139,7 +139,10 @@ public class GameScreen implements Screen {
         if (state.situations.isEmpty()) {
             spawnInitialEvents();
         }
-        AudioManager.getInstance().playBgm("audio/bgm_game.ogg");
+        String currentBgm = AudioManager.getInstance().getCurrentBgmPath();
+        if (currentBgm == null || currentBgm.isEmpty() || currentBgm.equals("audio/bgm_menu.ogg")) {
+            AudioManager.getInstance().playBgm("audio/bgm_game.ogg");
+        }
     }
 
     // 👇 核心防御 1：坐标消毒剂

@@ -1,5 +1,7 @@
 package com.six.game.core;
 
+import com.six.game.AudioManager;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -68,6 +70,7 @@ public class GameState {
         data.chronicle = this.chronicle;
         data.chronicle.totalPlayTime = this.totalTime;
         data.ending = this.ending;
+        data.bgmPath = AudioManager.getInstance().getCurrentBgmPath();
 
         // 1. 给所有卡牌分配存档 ID，并保存
         int cardIdx = 0;
@@ -197,6 +200,11 @@ public class GameState {
             s.timer = sd.timer;
 
             situations.add(s);
+        }
+
+
+        if (data.bgmPath != null && !data.bgmPath.isEmpty()) {
+            AudioManager.getInstance().playBgm(data.bgmPath);
         }
     }
 

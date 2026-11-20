@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>模拟器 - 存档解密/重加密</title>
+    <style>
+        body { background-color: #1a1a1a; color: #ddd; font-family: monospace; padding: 20px; }
+        textarea { width: 100%; height: 300px; background: #2a2a2a; color: #0f0; border: 1px solid #444; padding: 10px; margin-bottom: 10px; font-family: monospace; }
+        button { background: #4a3b5c; color: #fff; border: none; padding: 10px 20px; cursor: pointer; margin-right: 10px; font-size: 16px; }
+        button:hover { background: #6a5582; }
+        h2 { color: #d4af37; }
+    </style>
+</head>
+<body>
+    <h2>存档解密/加密器</h2>
+    <p>将存档文件（slot_x.json）里的乱码粘贴到下面，点击“解密”查看或修改，改完后再点击“重新加密”复制回去。</p>
+    
+    <textarea id="input" placeholder="在此粘贴加密的存档文本..."></textarea>
+    
+    <div>
+        <button onclick="decryptText()">🔓 解密 / 美化</button>
+        <button onclick="encryptText()">🔒 重新加密</button>
+    </div>
+
+    <textarea id="output" placeholder="结果将显示在这里..." style="margin-top: 10px; color: #ffcc00;"></textarea>
+
+    <script>
+        const KEY = "Cultist_Project_Moon_Secret";
+
+        function strToUtf8(str) {
+            return new TextEncoder().encode(str);
+        }
+
+        function utf8ToStr(bytes) {
+            return new TextDecoder().decode(bytes);
+        }
+
+        function xorData(dataBytes) {
+            const keyBytes = strToUtf8(KEY);
+            const result = new Uint8Array(dataBytes.length);
+            for (let i = 0; i < dataBytes.length; i++) {
+                result[i] = dataBytes[i] ^ keyBytes[i % keyBytes.length];
+            }
+            return result;
+        }
+
+        function decryptText() {
+            const input = document.getElementById('input').value.trim();
+            if (!input) return alert("请先粘贴加密文本！");
+            
+            try {
+                // Base64 解码
+                const binaryStr = atob(input);
+                const dataBytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    dataBytes[i] = binaryStr.charCodeAt(i);
+                }
+                
+                // 异或解密
+                const decBytes = xorData(dataBytes);
+                const rawJson = utf8ToStr(decBytes);
+                
+                // 尝试格式化 JSON
+                try {
+                    const jsonObj = JSON.parse(rawJson);
+                    document.getElementById('output').value = JSON.stringify(jsonObj, null, 4);
+                } catch (e) {
+                    document.getElementById('output').value = rawJson; // 如果不是合法 JSON，就原样输出
+                }
+            } catch (e) {
+                alert("解密失败！可能是存档未加密或格式错误喵。");
+            }
+        }
+
+        function encryptText() {
+            const input = document.getElementById('input').value.trim(); 
+            // 如果上方文本框是空的，就取下方文本框的内容来加密
+            const rawJson = input ? input : document.getElementById('output').value.trim();
+            if (!rawJson) return alert("请先放入解密后的 JSON 文本！");
+
+            try {
+                // 转成 UTF-8 字节
+                const dataBytes = strToUtf8(rawJson);
+                
+                // 异或加密
+                const encBytes = xorData(dataBytes);
+                
+                // Base64 编码
+                let binaryStr = '';
+                for (let i = 0; i < encBytes.length; i++) {
+                    binaryStr += String.fromCharCode(encBytes[i]);
+                }
+                const base64 = btoa(binaryStr);
+                
+                // 把加密结果输出回下方的文本框，方便复制
+                document.getElementById('output').value = base64;
+                alert("已重新加密！请复制下方文本框内的乱码替换原有存档。");
+            } catch (e) {
+                alert("加密失败，请检查文本是否含有非法字符喵。");
+            }
+        }
+    </script>
+</body>
+</html>

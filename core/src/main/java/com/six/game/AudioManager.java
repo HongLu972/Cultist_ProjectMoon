@@ -78,4 +78,8 @@ public class AudioManager {
         }
         bgmCache.clear();
     }
+
+    public String getCurrentBgmPath() {
+        return currentBgmPath;
+    }
 }

@@ -9,9 +9,9 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-import com.badlogic.gdx.utils.Json;
-import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.*;
 import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.six.game.core.Chronicle;
 import com.six.game.core.GameState;
 import com.six.game.core.SaveData;
 
@@ -85,21 +85,6 @@ public class SaveLoadScreen implements Screen {
         }
     }
 
-    private String getSaveName(int slot) {
-        FileHandle file = Gdx.files.local("saves/slot_" + slot + ".json");
-        if (!file.exists()) return "空存档";
-        try {
-            SaveData data = new Json().fromJson(SaveData.class, file.readString());
-            if (data.saveName != null && !data.saveName.isEmpty()) {
-                return data.saveName;
-            }
-        } catch (Exception e) {
-            // 👇 如果解析 JSON 失败，就把它标记为损坏的存档，不崩溃！
-            return "损坏的存档";
-        }
-        return "未命名存档";
-    }
-
     private void showNameDialog(int slot) {
         Table overlay = new Table();
         overlay.setFillParent(true);
@@ -150,21 +135,54 @@ public class SaveLoadScreen implements Screen {
         if (currentState == null) return;
         SaveData data = currentState.createSaveData();
         data.saveName = name;
-        String json = new Json().toJson(data);
+
+        Json json = new Json();
+        // 👇 核心：转成美观的 JSON 格式
+        String rawJson = json.prettyPrint(data);
+
+        // 👇 核心：加密
+        String encrypted = SaveCrypt.encrypt(rawJson);
+
         Gdx.files.local("saves/").mkdirs();
-        Gdx.files.local("saves/slot_" + slot + ".json").writeString(json, false);
+        Gdx.files.local("saves/slot_" + slot + ".json").writeString(encrypted, false, "UTF-8");
+    }
+
+    private String getSaveName(int slot) {
+        FileHandle file = Gdx.files.local("saves/slot_" + slot + ".json");
+        if (!file.exists()) return "空存档";
+        try {
+            String encrypted = file.readString("UTF-8");
+            String rawJson = SaveCrypt.decrypt(encrypted);
+
+            SaveData data = new Json().fromJson(SaveData.class, rawJson);
+            if (data.saveName != null && !data.saveName.isEmpty()) {
+                return data.saveName;
+            }
+        } catch (Exception e) {
+            return "损坏的存档";
+        }
+        return "未命名存档";
     }
 
     private void loadFromSlot(int slot) {
         try {
-            String json = Gdx.files.local("saves/slot_" + slot + ".json").readString();
-            SaveData data = new Json().fromJson(SaveData.class, json);
+            String encrypted = Gdx.files.local("saves/slot_" + slot + ".json").readString("UTF-8");
+            String rawJson = SaveCrypt.decrypt(encrypted);
 
-            // 如果解析成功，就交给 Main 处理
+            SaveData data;
+            try {
+                data = new Json().fromJson(SaveData.class, rawJson);
+            } catch (Exception e) {
+                // 降级解析：剥离 chronicle 字段
+                JsonValue root = new JsonReader().parse(rawJson);
+                root.remove("chronicle");
+                data = new Json().fromJson(SaveData.class, root.toJson(JsonWriter.OutputType.json));
+                data.chronicle = new Chronicle();
+            }
+
             ((Main) Gdx.app.getApplicationListener()).loadFromData(data);
         } catch (Exception e) {
-            // 👇 如果解析崩溃，弹出报错但不退出游戏
-            Gdx.app.error("SaveLoadScreen", "存档解析失败", e);
+            e.printStackTrace();
             showErrorDialog("存档已损坏，无法读取喵！\n" + e.getMessage());
         }
     }

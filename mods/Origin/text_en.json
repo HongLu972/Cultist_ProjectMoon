@@ -1,0 +1,47 @@
+{
+"aspect.wealthy.name": {
+	"value": "?!So Wealthy?！"
+},
+"aspect.human.name": {
+	"value": "Humanity"
+},
+"aspect.sickness.name": {
+	"value": "Illness"
+},
+"aspect.inspire.name": {
+	"value": "Inspiration"
+},
+"aspect.cogito.name": {
+	"value": "Cogito Adaptivity"
+},
+"aspect.kind.name": {
+	"value": "Kindness"
+},
+"aspect.oldness.name": {
+	"value": "Aging"
+},
+"aspect.medicine.name": {
+	"value": "Medical"
+},
+"aspect.precious.name": {
+	"value": "Precious"
+},
+"aspect.tired.name": {
+	"value": "Tired"
+},
+"aspect.fixer.name": {
+	"value": "Fixer"
+},
+"aspect.music.name": {
+	"value": "Music"
+},
+"aspect.wisdom.name": {
+	"value": "Wisdom"
+},
+"aspect.ability.name": {
+	"value": "Ability"
+},
+"aspect.evidence.name": {
+	"value": "Evidence"
+}
+}

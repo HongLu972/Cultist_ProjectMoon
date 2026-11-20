@@ -15,7 +15,7 @@ public class Main extends Game {
     private Library library;
     private EventBook events;
     private ArrayList<ScenarioDef> scenarios;
-    private GameConfig config;
+    public GameConfig config;
 
     @Override
     public void create() {

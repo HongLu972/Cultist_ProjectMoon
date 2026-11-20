@@ -293,4 +293,38 @@ public final class Actions {
             return false;
         }
     }
+
+    /** "random_trigger": 按权重随机触发一个事件。 */
+    public static class RandomTrigger extends Action {
+        public ArrayList<Option> options = new ArrayList<>();
+
+        public static class Option {
+            public String event;
+            public int weight = 1;
+        }
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            if (options.isEmpty()) return false;
+
+            int totalWeight = 0;
+            for (Option o : options) totalWeight += o.weight;
+            if (totalWeight <= 0) return false;
+
+            int roll = ctx.state.random.nextInt(totalWeight);
+            int current = 0;
+            for (Option o : options) {
+                current += o.weight;
+                if (roll < current) {
+                    if (ctx.situation != null) {
+                        if (ctx.next == null) ctx.next = o.event;
+                    } else {
+                        ctx.state.runBackground(o.event);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
 }

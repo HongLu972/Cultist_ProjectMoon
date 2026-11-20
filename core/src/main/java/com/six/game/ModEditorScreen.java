@@ -22,32 +22,38 @@ public class ModEditorScreen implements Screen {
     private final Ui ui;
     private final Table leftListTable;
     private final Table rightFormTable;
-    private final Label statusLabel;
-    private final String currentModName = "MyCustomMod";
 
-    // 导航按钮组（用于高亮管理）
+    private final TextField modNameField;
+    private String currentModName = "MyCustomMod";
+
+    private final boolean isZh;
+
     private final ButtonGroup<TextButton> navGroup = new ButtonGroup<>();
     private TextButton btnCard, btnEvent, btnEnding, btnVerb, btnScenario, btnConfig;
 
-    // 数据缓存
-    private ArrayList<Element> draftElements = new ArrayList<>();
-    private ArrayList<EventDef> draftEvents = new ArrayList<>();
-    private ArrayList<EndingDef> draftEndings = new ArrayList<>();
-    private ArrayList<VerbDef> draftVerbs = new ArrayList<>();
-    private ArrayList<ScenarioDef> draftScenarios = new ArrayList<>();
-    private HashMap<String, String> draftZh = new HashMap<>();
-    private HashMap<String, String> draftEn = new HashMap<>();
-    private GameConfig draftConfig = new GameConfig();
+    private final ArrayList<Element> draftElements = new ArrayList<>();
+    private final ArrayList<EventDef> draftEvents = new ArrayList<>();
+    private final ArrayList<EndingDef> draftEndings = new ArrayList<>();
+    private final ArrayList<VerbDef> draftVerbs = new ArrayList<>();
+    private final ArrayList<ScenarioDef> draftScenarios = new ArrayList<>();
+    private final HashMap<String, String> draftZh = new HashMap<>();
+    private final HashMap<String, String> draftEn = new HashMap<>();
+    private final GameConfig draftConfig = new GameConfig();
 
     private String currentTab = "";
+    private final Table toastTable = new Table();
 
     public ModEditorScreen(Ui ui) {
         this.ui = ui;
 
-        // 【核心防呆】优先初始化所有容器，彻底杜绝空指针！
+        GameConfig config = null;
+        if (Gdx.app.getApplicationListener() instanceof Main) {
+            config = ((Main) Gdx.app.getApplicationListener()).config;
+        }
+        this.isZh = (config == null) || "zh".equalsIgnoreCase(config.language);
+
         leftListTable = new Table();
         leftListTable.top().pad(10);
-
         rightFormTable = new Table();
         rightFormTable.top().left().pad(10);
 
@@ -56,7 +62,11 @@ public class ModEditorScreen implements Screen {
         root.setBackground(ui.rect(new Color(0.12f, 0.14f, 0.18f, 1f)));
         stage.addActor(root);
 
-        // ---------------- 顶部导航栏 ----------------
+        toastTable.setFillParent(true);
+        toastTable.top().padTop(100);
+        toastTable.setTouchable(com.badlogic.gdx.scenes.scene2d.Touchable.disabled);
+        stage.addActor(toastTable);
+
         Table navBar = new Table();
         navBar.setBackground(ui.rect(new Color(0.25f, 0.2f, 0.3f, 1f)));
         navBar.pad(10);
@@ -65,26 +75,30 @@ public class ModEditorScreen implements Screen {
         navGroup.setMaxCheckCount(1);
         navGroup.setUncheckLast(true);
 
-        btnCard = createNavBtn("卡牌制作", "CARD", navBar);
-        btnEvent = createNavBtn("事件制作", "EVENT", navBar);
-        btnEnding = createNavBtn("结局制作", "ENDING", navBar);
-        btnVerb = createNavBtn("动作槽", "VERB", navBar);
-        btnScenario = createNavBtn("开局制作", "SCENARIO", navBar);
-        btnConfig = createNavBtn("全局配置", "CONFIG", navBar);
+        btnCard = createNavBtn(t("卡牌制作", "Cards"), "CARD", navBar);
+        btnEvent = createNavBtn(t("事件制作", "Events"), "EVENT", navBar);
+        btnEnding = createNavBtn(t("结局制作", "Endings"), "ENDING", navBar);
+        btnVerb = createNavBtn(t("动作槽", "Verbs"), "VERB", navBar);
+        btnScenario = createNavBtn(t("开局制作", "Scenarios"), "SCENARIO", navBar);
+        btnConfig = createNavBtn(t("全局配置", "Config"), "CONFIG", navBar);
 
-        // 加入组（这会触发第一个按钮的选中，但因为容器已初始化，所以很安全）
+        TextButton btnImport = createActionBtn(t("📂 导入模组", "📂 Import Mod"), this::importMod);
+        navBar.add(btnImport).padRight(10);
+
         navGroup.add(btnCard, btnEvent, btnEnding, btnVerb, btnScenario, btnConfig);
 
-        statusLabel = new Label("当前编辑: " + currentModName, ui.labelStyle(Color.GOLD));
-        TextButton btnSave = new TextButton("💾 保存导出全部", ui.buttonStyle());
-        TextButton btnBack = new TextButton("返回主菜单", ui.buttonStyle());
+        navBar.add(new Label(t("当前模组名:", "Current Mod Name:"), ui.labelStyle(Color.WHITE))).padLeft(10).padRight(5);
+        modNameField = new TextField(currentModName, ui.textFieldStyle());
+        navBar.add(modNameField).width(200).padRight(10);
 
-        navBar.add(statusLabel).expandX().left().padLeft(20);
+        TextButton btnSave = createActionBtn(t("💾 保存导出全部", "💾 Save & Export"), this::saveModToDisk);
+        TextButton btnBack = createActionBtn(t("返回主菜单", "Back to Menu"), () -> ((Main) Gdx.app.getApplicationListener()).showMainMenu());
+
+        navBar.add().expandX();
         navBar.add(btnSave).padRight(10);
         navBar.add(btnBack);
         root.add(navBar).growX().row();
 
-        // ---------------- 左右分屏 ----------------
         Table mainSplit = new Table();
         root.add(mainSplit).grow().pad(10);
 
@@ -96,50 +110,74 @@ public class ModEditorScreen implements Screen {
         rightScroll.setFadeScrollBars(false);
         mainSplit.add(rightScroll).grow();
 
-        btnSave.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent e, Actor a) { saveModToDisk(); }
-        });
-        btnBack.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent e, Actor a) { ((Main) Gdx.app.getApplicationListener()).showMainMenu(); }
-        });
-
-        // 初始化完成，安全触发第一次渲染
         btnCard.setChecked(true);
+    }
+
+    private String t(String zh, String en) {
+        return isZh ? zh : en;
+    }
+
+    private void showToast(String msg, Color color) {
+        toastTable.clearActions();
+        toastTable.clear();
+        Label label = new Label(msg, ui.labelStyle(color));
+        Table bg = new Table();
+        bg.setBackground(ui.rect(new Color(0, 0, 0, 0.85f)));
+        bg.pad(10, 20, 10, 20);
+        bg.add(label);
+
+        toastTable.add(bg);
+        toastTable.getColor().a = 1f;
+        toastTable.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.sequence(
+            com.badlogic.gdx.scenes.scene2d.actions.Actions.delay(2f),
+            com.badlogic.gdx.scenes.scene2d.actions.Actions.fadeOut(0.5f)
+        ));
     }
 
     private TextButton createNavBtn(String text, String tabId, Table navBar) {
         TextButton btn = new TextButton(text, ui.buttonStyle());
         btn.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent e, Actor a) {
-                if (btn.isChecked()) {
-                    switchTab(tabId);
-                }
+                if (btn.isChecked()) switchTab(tabId);
             }
         });
         navBar.add(btn).padRight(5);
         return btn;
     }
 
+    private TextButton createActionBtn(String text, Runnable onClick) {
+        TextButton btn = new TextButton(text, ui.buttonStyle());
+        btn.setProgrammaticChangeEvents(false);
+        btn.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                if (btn.isChecked()) {
+                    if (onClick != null) onClick.run();
+                    btn.setChecked(false);
+                }
+            }
+        });
+        return btn;
+    }
+
     private void switchTab(String tab) {
-        if (tab.equals(currentTab)) return; // 防止重复刷新
+        if (tab.equals(currentTab)) return;
         currentTab = tab;
         refreshList();
         buildForm(null);
     }
 
-    // ================== 左侧列表 ==================
     private void refreshList() {
         if (leftListTable == null) return;
         leftListTable.clear();
 
         String title = "";
         switch (currentTab) {
-            case "CARD": title = "已暂存卡牌"; break;
-            case "EVENT": title = "已暂存事件"; break;
-            case "ENDING": title = "已暂存结局"; break;
-            case "VERB": title = "已暂存行动槽"; break;
-            case "SCENARIO": title = "已暂存开局"; break;
-            case "CONFIG": title = "全局配置"; break;
+            case "CARD": title = t("已暂存卡牌", "Drafted Cards"); break;
+            case "EVENT": title = t("已暂存事件", "Drafted Events"); break;
+            case "ENDING": title = t("已暂存结局", "Drafted Endings"); break;
+            case "VERB": title = t("已暂存行动槽", "Drafted Verbs"); break;
+            case "SCENARIO": title = t("已暂存开局", "Drafted Scenarios"); break;
+            case "CONFIG": title = t("全局配置", "Global Config"); break;
         }
         leftListTable.add(new Label(title, ui.labelStyle(Color.GOLD))).padBottom(15).left().row();
 
@@ -161,26 +199,100 @@ public class ModEditorScreen implements Screen {
         row.setBackground(ui.rect(new Color(0.2f, 0.22f, 0.28f, 1f)));
         row.pad(8);
 
-        TextButton itemBtn = new TextButton(id, ui.buttonStyle());
-        itemBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) { buildForm(data); }
-        });
+        TextButton itemBtn = createActionBtn(id, () -> buildForm(data));
         row.add(itemBtn).growX().padRight(10);
 
-        TextButton delBtn = new TextButton("X", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                sourceList.remove(index);
-                refreshList();
-                buildForm(null);
-                statusLabel.setText("已删除 [" + id + "]");
-            }
+        final int idx = index;
+        TextButton delBtn = createActionBtn("X", () -> {
+            sourceList.remove(idx);
+            refreshList();
+            buildForm(null);
         });
         row.add(delBtn).size(30, 30);
         leftListTable.add(row).growX().padBottom(8).row();
     }
 
-    // ================== 右侧表单 ==================
+    private void importMod() {
+        new Thread(() -> {
+            try {
+                javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception e) {}
+
+            javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+            chooser.setDialogTitle(t("选择要导入的 Mod 文件夹", "Select Mod Folder to Import"));
+            chooser.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
+
+            java.io.File modsDir = new java.io.File(Gdx.files.local("mods").file().getAbsolutePath());
+            if (!modsDir.exists()) modsDir.mkdirs();
+            chooser.setCurrentDirectory(modsDir);
+
+            if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                java.io.File selectedDir = chooser.getSelectedFile();
+                String dirName = selectedDir.getName();
+
+                Gdx.app.postRunnable(() -> {
+                    try {
+                        Json json = createJson();
+                        ArrayList<Element> tempEl = new ArrayList<>();
+                        ArrayList<EventDef> tempEv = new ArrayList<>();
+                        ArrayList<EndingDef> tempEn = new ArrayList<>();
+                        ArrayList<VerbDef> tempVb = new ArrayList<>();
+                        ArrayList<ScenarioDef> tempSc = new ArrayList<>();
+                        HashMap<String, String> tempZh = new HashMap<>();
+                        HashMap<String, String> tempEnMap = new HashMap<>();
+
+                        FileHandle elFile = new FileHandle(selectedDir.getAbsolutePath() + "/elements.json");
+                        if (elFile.exists()) tempEl.addAll(json.fromJson(ArrayList.class, Element.class, elFile.readString("UTF-8")));
+
+                        FileHandle evFile = new FileHandle(selectedDir.getAbsolutePath() + "/events.json");
+                        if (evFile.exists()) tempEv.addAll(json.fromJson(ArrayList.class, EventDef.class, evFile.readString("UTF-8")));
+
+                        FileHandle enFile = new FileHandle(selectedDir.getAbsolutePath() + "/endings.json");
+                        if (enFile.exists()) {
+                            json.setTypeName(null);
+                            try {
+                                tempEn.addAll(json.fromJson(ArrayList.class, EndingDef.class, enFile.readString("UTF-8")));
+                            } finally {
+                                json.setTypeName("type");
+                            }
+                        }
+
+                        FileHandle vbFile = new FileHandle(selectedDir.getAbsolutePath() + "/verbs.json");
+                        if (vbFile.exists()) tempVb.addAll(json.fromJson(ArrayList.class, VerbDef.class, vbFile.readString("UTF-8")));
+
+                        FileHandle scFile = new FileHandle(selectedDir.getAbsolutePath() + "/scenarios.json");
+                        if (scFile.exists()) tempSc.addAll(json.fromJson(ArrayList.class, ScenarioDef.class, scFile.readString("UTF-8")));
+
+                        FileHandle zhFile = new FileHandle(selectedDir.getAbsolutePath() + "/text_zh.json");
+                        if (zhFile.exists()) tempZh.putAll(json.fromJson(HashMap.class, String.class, zhFile.readString("UTF-8")));
+
+                        FileHandle enTextFile = new FileHandle(selectedDir.getAbsolutePath() + "/text_en.json");
+                        if (enTextFile.exists()) tempEnMap.putAll(json.fromJson(HashMap.class, String.class, enTextFile.readString("UTF-8")));
+
+                        currentModName = dirName;
+                        modNameField.setText(currentModName);
+
+                        draftElements.clear(); draftElements.addAll(tempEl);
+                        draftEvents.clear(); draftEvents.addAll(tempEv);
+                        draftEndings.clear(); draftEndings.addAll(tempEn);
+                        draftVerbs.clear(); draftVerbs.addAll(tempVb);
+                        draftScenarios.clear(); draftScenarios.addAll(tempSc);
+                        draftZh.clear(); draftZh.putAll(tempZh);
+                        draftEn.clear(); draftEn.putAll(tempEnMap);
+
+                        refreshList();
+                        buildForm(null);
+                        showToast(t("导入成功！", "Import Successful!"), Color.GREEN);
+
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        showToast(t("导入失败，JSON格式有误", "Import failed: Invalid JSON"), Color.SALMON);
+                    }
+                });
+            }
+        }).start();
+    }
+
     private void buildForm(Object dataToEdit) {
         if (rightFormTable == null) return;
         rightFormTable.clear();
@@ -193,395 +305,270 @@ public class ModEditorScreen implements Screen {
         else if (currentTab.equals("CONFIG")) buildConfigForm();
     }
 
-    // --- 卡牌表单 ---
+    // ================= 各模块表单构建 =================
+
     private void buildCardForm(Element editData) {
         Table form = createFormPanel();
-        form.add(new Label(editData == null ? "新增卡牌" : "编辑卡牌: " + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
+        form.add(new Label(editData == null ? t("新增卡牌", "New Card") : t("编辑卡牌: ", "Edit Card: ") + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
 
-        TextField idField = addInput(form, "卡牌ID:", editData != null ? editData.id : "");
+        TextField idField = addInput(form, t("卡牌ID:", "Card ID:"), editData != null ? editData.id : "");
         idField.setDisabled(editData != null);
-        TextField nameField = addInput(form, "卡牌名:", editData != null ? draftZh.getOrDefault("element." + editData.id + ".name", "") : "");
-        TextField enNameField = addInput(form, "英文名:", editData != null ? draftEn.getOrDefault("element." + editData.id + ".name", "") : "");
-        TextField lifetimeField = addInput(form, "寿命(-1无限):", editData != null ? String.valueOf(editData.lifetime) : "-1");
-        TextField decayField = addInput(form, "衰变产物(ID):", editData != null && editData.decayTo != null ? editData.decayTo : "");
+        TextField nameField = addInput(form, t("卡牌名:", "Card Name:"), editData != null ? draftZh.getOrDefault("element." + editData.id + ".name", "") : "");
+        TextField enNameField = addInput(form, t("英文名:", "English Name:"), editData != null ? draftEn.getOrDefault("element." + editData.id + ".name", "") : "");
+        TextField lifetimeField = addInput(form, t("寿命(-1无限):", "Lifetime (-1 infinite):"), editData != null ? String.valueOf(editData.lifetime) : "-1");
+        TextField decayField = addInput(form, t("衰变产物(ID):", "Decay to (ID):"), editData != null && editData.decayTo != null ? editData.decayTo : "");
 
         CheckBox.CheckBoxStyle cbs = new CheckBox.CheckBoxStyle(ui.rect(Color.DARK_GRAY), ui.rect(Color.LIGHT_GRAY), ui.font, Color.WHITE);
-        CheckBox stackBox = new CheckBox(" 可堆叠", cbs);
+        CheckBox stackBox = new CheckBox(t(" 可堆叠", " Stackable"), cbs);
         stackBox.setChecked(editData != null && editData.stackable);
         form.add(stackBox).colspan(2).left().padBottom(15).row();
 
-        // ================== 图片选择与预览区 ==================
-        form.add(new Label("卡牌图片:", ui.labelStyle(Color.WHITE))).left().padRight(30).padBottom(15);
-
-        Table imgTable = new Table();
-        TextField imgField = new TextField(editData != null && editData.image != null ? editData.image : "img/cards/", ui.textFieldStyle());
-        imgField.setDisabled(true);
-        imgTable.add(imgField).width(220).padRight(10);
-
-        // 图片预览容器
-        Image imgPreview = new Image();
-        imgPreview.setScaling(com.badlogic.gdx.utils.Scaling.fit);
-        imgTable.add(imgPreview).size(80, 80).padRight(10); // 预览图固定 80x80
-
-        // 尝试加载当前已有的图片
-        String currentPath = imgField.getText();
-        if (currentPath != null && !currentPath.isEmpty() && !currentPath.equals("img/cards/")) {
-            com.badlogic.gdx.graphics.Texture tex = ui.texture("mods/" + currentModName + "/" + currentPath);
-            if (tex != null) imgPreview.setDrawable(new com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(tex));
-        }
-
-        TextButton selectImgBtn = new TextButton("上传新图片", ui.buttonStyle());
-        selectImgBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                // 核心修复：使用 AWT 的原生 FileDialog，直接调用 Windows/Mac 的系统级选图界面喵！
-                // 必须放在一个新线程里，否则会卡死 LibGDX 的渲染线程
-                new Thread(() -> {
-                    java.awt.FileDialog fd = new java.awt.FileDialog((java.awt.Frame) null, "选择卡牌图片 (推荐 PNG)", java.awt.FileDialog.LOAD);
-                    fd.setFilenameFilter((dir, name) -> name.toLowerCase().endsWith(".png") || name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".jpeg"));
-                    fd.setVisible(true);
-
-                    String fileName = fd.getFile();
-                    String dirName = fd.getDirectory();
-
-                    // 如果用户点了取消，直接返回
-                    if (fileName == null) return;
-
-                    java.io.File selectedFile = new java.io.File(dirName, fileName);
-                    String ext = fileName.substring(fileName.lastIndexOf("."));
-
-                    String cardId = idField.getText().trim();
-                    if (cardId.isEmpty()) cardId = "new_card";
-
-                    FileHandle targetDir = Gdx.files.local("mods/" + currentModName + "/img/cards/");
-                    targetDir.mkdirs();
-                    FileHandle targetFile = targetDir.child(cardId + ext);
-
-                    try {
-                        byte[] imageBytes = java.nio.file.Files.readAllBytes(selectedFile.toPath());
-                        targetFile.writeBytes(imageBytes, false);
-
-                        String finalCardId = cardId;
-                        // 必须回到主线程更新 UI
-                        Gdx.app.postRunnable(() -> {
-                            imgField.setText("img/cards/" + finalCardId + ext);
-                            statusLabel.setText("图片已保存并重命名喵！");
-
-                            com.badlogic.gdx.graphics.Texture newTex = new com.badlogic.gdx.graphics.Texture(targetFile);
-                            imgPreview.setDrawable(new com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(newTex));
-                        });
-
-                    } catch (Exception e) {
-                        Gdx.app.postRunnable(() -> statusLabel.setText("图片复制失败: " + e.getMessage()));
-                    }
-                }).start(); // 启动线程
-            }
-        });
-        imgTable.add(selectImgBtn).size(120, 40);
-
-        form.add(imgTable).left().colspan(2).padBottom(15).row();
-        // =======================================================
-
-        // 属性
         Table aspectBox = new Table();
-        aspectBox.add(new Label("属性:", ui.labelStyle(Color.WHITE))).left().colspan(4).row();
+        aspectBox.add(new Label(t("属性:", "Aspects:"), ui.labelStyle(Color.WHITE))).left().colspan(4).row();
         if (editData != null) {
             for (String k : editData.aspects.keySet()) addAspectRow(aspectBox, k, draftZh.getOrDefault("aspect." + k + ".name", ""), draftEn.getOrDefault("aspect." + k + ".name", ""), String.valueOf(editData.aspects.get(k)));
         }
-        TextButton addAspectBtn = new TextButton("+ 添加属性", ui.buttonStyle());
-        addAspectBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addAspectRow(aspectBox, "", "", "", "1"); } });
+        TextButton addAspectBtn = createActionBtn(t("+ 添加属性", "+ Add Aspect"), () -> addAspectRow(aspectBox, "", "", "", "1"));
         aspectBox.add(addAspectBtn).left().row();
         form.add(aspectBox).colspan(2).left().padBottom(15).row();
 
-        // 隐藏属性
         Table hiddenBox = new Table();
-        hiddenBox.add(new Label("隐藏属性:", ui.labelStyle(Color.WHITE))).left().colspan(4).row();
+        hiddenBox.add(new Label(t("隐藏属性:", "Hidden Aspects:"), ui.labelStyle(Color.WHITE))).left().colspan(4).row();
         if (editData != null) {
             for (String k : editData.hiddenAspects.keySet()) addAspectRow(hiddenBox, k, draftZh.getOrDefault("aspect." + k + ".name", ""), draftEn.getOrDefault("aspect." + k + ".name", ""), String.valueOf(editData.hiddenAspects.get(k)));
         }
-        TextButton addHiddenBtn = new TextButton("+ 添加隐藏属性", ui.buttonStyle());
-        addHiddenBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addAspectRow(hiddenBox, "", "", "", "1"); } });
+        TextButton addHiddenBtn = createActionBtn(t("+ 添加隐藏属性", "+ Add Hidden Aspect"), () -> addAspectRow(hiddenBox, "", "", "", "1"));
         hiddenBox.add(addHiddenBtn).left().row();
         form.add(hiddenBox).colspan(2).left().padBottom(15).row();
 
-        // 诱发事件
         Table triggerBox = new Table();
-        triggerBox.add(new Label("诱发事件:", ui.labelStyle(Color.WHITE))).left().colspan(3).row();
+        triggerBox.add(new Label(t("诱发事件:", "Triggers:"), ui.labelStyle(Color.WHITE))).left().colspan(3).row();
         if (editData != null) for (Element.Trigger t : editData.triggers) addTriggerRow(triggerBox, t.slot, t.event);
-        TextButton addTriggerBtn = new TextButton("+ 添加诱发事件", ui.buttonStyle());
-        addTriggerBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addTriggerRow(triggerBox, "", ""); } });
+        TextButton addTriggerBtn = createActionBtn(t("+ 添加诱发事件", "+ Add Trigger"), () -> addTriggerRow(triggerBox, "", ""));
         triggerBox.add(addTriggerBtn).left().row();
         form.add(triggerBox).colspan(2).left().padBottom(20).row();
 
-        TextButton saveBtn = new TextButton(editData == null ? "暂存卡牌" : "保存修改", ui.buttonStyle());
-        saveBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                if (idField.getText().isEmpty()) { statusLabel.setText("ID不能为空喵！"); return; }
-                if (editData != null) draftElements.remove(editData);
-                Element e = new Element(idField.getText());
-                e.lifetime = parseFloat(lifetimeField.getText(), -1);
-                e.decayTo = decayField.getText();
-                e.stackable = stackBox.isChecked();
-                e.aspects = parseAspectTable(aspectBox);
-                e.hiddenAspects = parseAspectTable(hiddenBox);
-                e.triggers = parseTriggerTable(triggerBox);
+        TextButton saveBtn = createActionBtn(editData == null ? t("暂存卡牌", "Draft Card") : t("保存修改", "Save Changes"), () -> {
+            if (idField.getText().isEmpty()) return;
+            if (editData != null) draftElements.remove(editData);
+            Element e = new Element(idField.getText());
+            e.lifetime = parseFloat(lifetimeField.getText(), -1);
+            e.decayTo = decayField.getText();
+            e.stackable = stackBox.isChecked();
+            e.aspects = parseAspectTable(aspectBox);
+            e.hiddenAspects = parseAspectTable(hiddenBox);
+            e.triggers = parseTriggerTable(triggerBox);
 
-                draftElements.add(e);
-                draftZh.put("element." + e.id + ".name", nameField.getText());
-                draftEn.put("element." + e.id + ".name", enNameField.getText());
-                statusLabel.setText("卡牌 [" + e.id + "] 已保存喵！");
-                refreshList();
-                if (editData == null) buildForm(null);
-            }
+            draftElements.add(e);
+            draftZh.put("element." + e.id + ".name", nameField.getText());
+            draftEn.put("element." + e.id + ".name", enNameField.getText());
+            refreshList();
+            if (editData == null) buildForm(null);
+            showToast(t("卡牌已暂存", "Card Drafted"), Color.GOLD);
         });
         form.add(saveBtn).colspan(2).padTop(10).row();
         rightFormTable.add(form).growX().top().pad(10);
     }
 
-    // --- 事件表单 ---
     private void buildEventForm(EventDef editData) {
         Table form = createFormPanel();
-        form.add(new Label(editData == null ? "新增事件" : "编辑事件: " + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
+        form.add(new Label(editData == null ? t("新增事件", "New Event") : t("编辑事件: ", "Edit Event: ") + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
 
-        TextField idField = addInput(form, "事件ID:", editData != null ? editData.id : "");
+        TextField idField = addInput(form, t("事件ID:", "Event ID:"), editData != null ? editData.id : "");
         idField.setDisabled(editData != null);
-        TextField nameField = addInput(form, "事件名:", editData != null ? draftZh.getOrDefault("event." + editData.id + ".name", "") : "");
-        TextField enNameField = addInput(form, "英文名:", editData != null ? draftEn.getOrDefault("event." + editData.id + ".name", "") : "");
-        TextField slotField = addInput(form, "槽位ID(none独立):", editData != null ? editData.slot : "none");
+        TextField nameField = addInput(form, t("事件名:", "Event Name:"), editData != null ? draftZh.getOrDefault("event." + editData.id + ".name", "") : "");
+        TextField enNameField = addInput(form, t("英文名:", "English Name:"), editData != null ? draftEn.getOrDefault("event." + editData.id + ".name", "") : "");
+        TextField slotField = addInput(form, t("槽位ID(none独立):", "Slot ID (none for standalone):"), editData != null ? editData.slot : "none");
 
         SelectBox<String> typeBox = new SelectBox<>(ui.selectBoxStyle());
         typeBox.setItems("manual", "auto", "linked");
         typeBox.setSelected(editData != null ? editData.start : "manual");
-        form.add(new Label("事件类型:", ui.labelStyle(Color.WHITE))).left().padRight(20);
+        form.add(new Label(t("事件类型:", "Event Type:"), ui.labelStyle(Color.WHITE))).left().padRight(20);
         form.add(typeBox).width(200).padBottom(15).row();
 
         CheckBox.CheckBoxStyle cbs = new CheckBox.CheckBoxStyle(ui.rect(Color.DARK_GRAY), ui.rect(Color.LIGHT_GRAY), ui.font, Color.WHITE);
-        CheckBox autoBox = new CheckBox(" 自动开始", cbs);
+        CheckBox autoBox = new CheckBox(t(" 自动开始", " Auto Start"), cbs);
         autoBox.setChecked(editData != null && editData.autoStart);
         form.add(autoBox).colspan(2).left().padBottom(15).row();
 
-        TextField timeField = addInput(form, "时间(秒):", editData != null ? String.valueOf(editData.time) : "10");
+        TextField timeField = addInput(form, t("时间(秒):", "Duration (s):"), editData != null ? String.valueOf(editData.time) : "10");
 
-        // 槽位列表
         Table slotListBox = new Table();
-        slotListBox.add(new Label("槽位列表:", ui.labelStyle(Color.WHITE))).left().colspan(3).row();
+        slotListBox.add(new Label(t("槽位列表:", "Slot List:"), ui.labelStyle(Color.WHITE))).left().colspan(3).row();
         if (editData != null) for (SlotDef sd : editData.slots) addSlotDefRow(slotListBox, sd.id, aspectsToString(sd.accepts));
-        TextButton addSlotBtn = new TextButton("+ 添加槽位", ui.buttonStyle());
-        addSlotBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addSlotDefRow(slotListBox, "", ""); } });
+        TextButton addSlotBtn = createActionBtn(t("+ 添加槽位", "+ Add Slot"), () -> addSlotDefRow(slotListBox, "", ""));
         slotListBox.add(addSlotBtn).left().row();
         form.add(slotListBox).colspan(2).left().padBottom(15).row();
 
-        // 强制吸入
         Table drainBox = new Table();
-        drainBox.add(new Label("强制吸入:", ui.labelStyle(Color.WHITE))).left().colspan(2).row();
+        drainBox.add(new Label(t("强制吸入:", "Force Drain:"), ui.labelStyle(Color.WHITE))).left().colspan(2).row();
         if (editData != null) for (String s : editData.forceDrainAspects) addForceDrainRow(drainBox, s);
-        TextButton addDrainBtn = new TextButton("+ 添加强制吸入", ui.buttonStyle());
-        addDrainBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addForceDrainRow(drainBox, ""); } });
+        TextButton addDrainBtn = createActionBtn(t("+ 添加强制吸入", "+ Add Force Drain"), () -> addForceDrainRow(drainBox, ""));
         drainBox.add(addDrainBtn).left().row();
         form.add(drainBox).colspan(2).left().padBottom(15).row();
 
-        // 触发要求
         Table inputBox = new Table();
-        inputBox.add(new Label("触发要求:", ui.labelStyle(Color.WHITE))).left().colspan(3).row();
+        inputBox.add(new Label(t("触发要求:", "Trigger Requirements:"), ui.labelStyle(Color.WHITE))).left().colspan(3).row();
         if (editData != null) for (String k : editData.input.keySet()) addInputRow(inputBox, k, String.valueOf(editData.input.get(k)));
-        TextButton addInputBtn = new TextButton("+ 添加要求", ui.buttonStyle());
-        addInputBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addInputRow(inputBox, "", "1"); } });
+        TextButton addInputBtn = createActionBtn(t("+ 添加要求", "+ Add Requirement"), () -> addInputRow(inputBox, "", "1"));
         inputBox.add(addInputBtn).left().row();
         form.add(inputBox).colspan(2).left().padBottom(15).row();
 
-        // 动作树
-        form.add(new Label("动作树(可视化):", ui.labelStyle(Color.GOLD))).colspan(2).left().row();
+        form.add(new Label(t("动作树(可视化):", "Action Tree (Visual):"), ui.labelStyle(Color.GOLD))).colspan(2).left().row();
         Table actionTreeBox = new Table();
         actionTreeBox.top().left();
         if (editData != null) for (Action act : editData.action) addActionBlock(actionTreeBox, act);
 
-        TextButton addActionBtn = new TextButton("+ 添加根动作", ui.buttonStyle());
-        addActionBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addActionBlock(actionTreeBox, null); } });
+        TextButton addActionBtn = createActionBtn(t("+ 添加根动作", "+ Add Root Action"), () -> addActionBlock(actionTreeBox, null));
         form.add(addActionBtn).colspan(2).left().padBottom(5).row();
         form.add(actionTreeBox).colspan(2).left().padBottom(20).row();
 
-        TextButton saveBtn = new TextButton(editData == null ? "暂存事件" : "保存修改", ui.buttonStyle());
-        saveBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                if (idField.getText().isEmpty()) { statusLabel.setText("ID不能为空喵！"); return; }
-                if (editData != null) draftEvents.remove(editData);
-                EventDef e = new EventDef();
-                e.id = idField.getText();
-                e.slot = slotField.getText();
-                e.start = typeBox.getSelected();
-                e.autoStart = autoBox.isChecked();
-                e.time = parseFloat(timeField.getText(), 10);
-                e.slots = parseSlotDefTable(slotListBox);
-                e.forceDrainAspects = parseForceDrainTable(drainBox);
-                e.input = parseInputTable(inputBox);
-                e.action = parseActionTree(actionTreeBox);
+        TextButton saveBtn = createActionBtn(editData == null ? t("暂存事件", "Draft Event") : t("保存修改", "Save Changes"), () -> {
+            if (idField.getText().isEmpty()) return;
+            if (editData != null) draftEvents.remove(editData);
+            EventDef e = new EventDef();
+            e.id = idField.getText();
+            e.slot = slotField.getText();
+            e.start = typeBox.getSelected();
+            e.autoStart = autoBox.isChecked();
+            e.time = parseFloat(timeField.getText(), 10);
+            e.slots = parseSlotDefTable(slotListBox);
+            e.forceDrainAspects = parseForceDrainTable(drainBox);
+            e.input = parseInputTable(inputBox);
+            e.action = parseActionTree(actionTreeBox);
 
-                draftEvents.add(e);
-                draftZh.put("event." + e.id + ".name", nameField.getText());
-                draftEn.put("event." + e.id + ".name", enNameField.getText());
-                statusLabel.setText("事件 [" + e.id + "] 已保存喵！");
-                refreshList();
-                if (editData == null) buildForm(null);
-            }
+            draftEvents.add(e);
+            draftZh.put("event." + e.id + ".name", nameField.getText());
+            draftEn.put("event." + e.id + ".name", enNameField.getText());
+            refreshList();
+            if (editData == null) buildForm(null);
+            showToast(t("事件已暂存", "Event Drafted"), Color.GOLD);
         });
         form.add(saveBtn).colspan(2).padTop(10).row();
         rightFormTable.add(form).growX().top().pad(10);
     }
 
-    // --- 结局表单 ---
     private void buildEndingForm(EndingDef editData) {
         Table form = createFormPanel();
-        form.add(new Label(editData == null ? "新增结局" : "编辑结局: " + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
-
-        TextField idField = addInput(form, "结局ID:", editData != null ? editData.id : "");
+        form.add(new Label(editData == null ? t("新增结局", "New Ending") : t("编辑结局: ", "Edit Ending: ") + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
+        TextField idField = addInput(form, t("结局ID:", "Ending ID:"), editData != null ? editData.id : "");
         idField.setDisabled(editData != null);
-        TextField nameField = addInput(form, "结局名:", editData != null ? draftZh.getOrDefault("ending." + editData.id + ".name", "") : "");
-        TextField enNameField = addInput(form, "英文名:", editData != null ? draftEn.getOrDefault("ending." + editData.id + ".name", "") : "");
-
+        TextField nameField = addInput(form, t("结局名:", "Ending Name:"), editData != null ? draftZh.getOrDefault("ending." + editData.id + ".name", "") : "");
+        TextField enNameField = addInput(form, t("英文名:", "English Name:"), editData != null ? draftEn.getOrDefault("ending." + editData.id + ".name", "") : "");
         SelectBox<String> typeBox = new SelectBox<>(ui.selectBoxStyle());
         typeBox.setItems("BE", "GE", "TE", "HE");
         typeBox.setSelected(editData != null ? editData.type : "BE");
-        form.add(new Label("类型:", ui.labelStyle(Color.WHITE))).left().padRight(20);
+        form.add(new Label(t("类型:", "Type:"), ui.labelStyle(Color.WHITE))).left().padRight(20);
         form.add(typeBox).width(200).padBottom(15).row();
-
-        TextButton saveBtn = new TextButton(editData == null ? "暂存结局" : "保存修改", ui.buttonStyle());
-        saveBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                if (idField.getText().isEmpty()) { statusLabel.setText("ID不能为空喵！"); return; }
-                if (editData != null) draftEndings.remove(editData);
-                EndingDef e = new EndingDef();
-                e.id = idField.getText();
-                e.type = typeBox.getSelected();
-                draftEndings.add(e);
-                draftZh.put("ending." + e.id + ".name", nameField.getText());
-                draftEn.put("ending." + e.id + ".name", enNameField.getText());
-                statusLabel.setText("结局 [" + e.id + "] 已保存喵！");
-                refreshList();
-                if (editData == null) buildForm(null);
-            }
+        TextButton saveBtn = createActionBtn(editData == null ? t("暂存结局", "Draft Ending") : t("保存修改", "Save Changes"), () -> {
+            if (idField.getText().isEmpty()) return;
+            if (editData != null) draftEndings.remove(editData);
+            EndingDef e = new EndingDef();
+            e.id = idField.getText();
+            e.type = typeBox.getSelected();
+            draftEndings.add(e);
+            draftZh.put("ending." + e.id + ".name", nameField.getText());
+            draftEn.put("ending." + e.id + ".name", enNameField.getText());
+            refreshList();
+            if (editData == null) buildForm(null);
+            showToast(t("结局已暂存", "Ending Drafted"), Color.GOLD);
         });
         form.add(saveBtn).colspan(2).padTop(10).row();
         rightFormTable.add(form).growX().top().pad(10);
     }
 
-    // --- 动作槽表单 ---
     private void buildVerbForm(VerbDef editData) {
         Table form = createFormPanel();
-        form.add(new Label(editData == null ? "新增动作槽" : "编辑动作槽: " + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
-
-        TextField idField = addInput(form, "槽位ID(如work):", editData != null ? editData.id : "");
+        form.add(new Label(editData == null ? t("新增动作槽", "New Verb Slot") : t("编辑动作槽: ", "Edit Verb Slot: ") + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
+        TextField idField = addInput(form, t("槽位ID(如work):", "Slot ID (e.g. work):"), editData != null ? editData.id : "");
         idField.setDisabled(editData != null);
-        TextField nameField = addInput(form, "中文名:", editData != null ? draftZh.getOrDefault("slot." + editData.id + ".name", "") : "");
-        TextField enNameField = addInput(form, "英文名:", editData != null ? draftEn.getOrDefault("slot." + editData.id + ".name", "") : "");
-        TextField iconField = addInput(form, "图标路径:", editData != null && editData.icon != null ? editData.icon : "");
-
-        TextButton saveBtn = new TextButton(editData == null ? "暂存动作槽" : "保存修改", ui.buttonStyle());
-        saveBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                if (idField.getText().isEmpty()) { statusLabel.setText("ID不能为空喵！"); return; }
-                if (editData != null) draftVerbs.remove(editData);
-                VerbDef v = new VerbDef();
-                v.id = idField.getText();
-                v.icon = iconField.getText();
-                draftVerbs.add(v);
-                draftZh.put("slot." + v.id + ".name", nameField.getText());
-                draftEn.put("slot." + v.id + ".name", enNameField.getText());
-                statusLabel.setText("动作槽 [" + v.id + "] 已保存喵！");
-                refreshList();
-                if (editData == null) buildForm(null);
-            }
+        TextField nameField = addInput(form, t("中文名:", "Chinese Name:"), editData != null ? draftZh.getOrDefault("slot." + editData.id + ".name", "") : "");
+        TextField enNameField = addInput(form, t("英文名:", "English Name:"), editData != null ? draftEn.getOrDefault("slot." + editData.id + ".name", "") : "");
+        TextField iconField = addInput(form, t("图标路径:", "Icon Path:"), editData != null && editData.icon != null ? editData.icon : "");
+        TextButton saveBtn = createActionBtn(editData == null ? t("暂存动作槽", "Draft Verb") : t("保存修改", "Save Changes"), () -> {
+            if (idField.getText().isEmpty()) return;
+            if (editData != null) draftVerbs.remove(editData);
+            VerbDef v = new VerbDef();
+            v.id = idField.getText();
+            v.icon = iconField.getText();
+            draftVerbs.add(v);
+            draftZh.put("slot." + v.id + ".name", nameField.getText());
+            draftEn.put("slot." + v.id + ".name", enNameField.getText());
+            refreshList();
+            if (editData == null) buildForm(null);
+            showToast(t("动作槽已暂存", "Verb Drafted"), Color.GOLD);
         });
         form.add(saveBtn).colspan(2).padTop(10).row();
         rightFormTable.add(form).growX().top().pad(10);
     }
 
-    // --- 开局表单 ---
     private void buildScenarioForm(ScenarioDef editData) {
         Table form = createFormPanel();
-        form.add(new Label(editData == null ? "新增开局" : "编辑开局: " + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
-
-        TextField idField = addInput(form, "开局ID(如ayin):", editData != null ? editData.id : "");
+        form.add(new Label(editData == null ? t("新增开局", "New Scenario") : t("编辑开局: ", "Edit Scenario: ") + editData.id, ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
+        TextField idField = addInput(form, t("开局ID(如ayin):", "Scenario ID (e.g. ayin):"), editData != null ? editData.id : "");
         idField.setDisabled(editData != null);
-        TextField nameField = addInput(form, "开局名:", editData != null ? draftZh.getOrDefault("scenario." + editData.id + ".name", "") : "");
-        TextField enNameField = addInput(form, "英文名:", editData != null ? draftEn.getOrDefault("scenario." + editData.id + ".name", "") : "");
+        TextField nameField = addInput(form, t("开局名:", "Scenario Name:"), editData != null ? draftZh.getOrDefault("scenario." + editData.id + ".name", "") : "");
+        TextField enNameField = addInput(form, t("英文名:", "English Name:"), editData != null ? draftEn.getOrDefault("scenario." + editData.id + ".name", "") : "");
 
-        // 初始卡牌
         Table cardBox = new Table();
-        cardBox.add(new Label("初始卡牌:", ui.labelStyle(Color.WHITE))).left().colspan(3).row();
+        cardBox.add(new Label(t("初始卡牌:", "Initial Cards:"), ui.labelStyle(Color.WHITE))).left().colspan(3).row();
         if (editData != null) {
             for (EventDef.Product p : editData.cards) addScenarioCardRow(cardBox, p.card, String.valueOf(p.amount));
         }
-        TextButton addCardBtn = new TextButton("+ 添加初始卡牌", ui.buttonStyle());
-        addCardBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addScenarioCardRow(cardBox, "", "1"); } });
+        TextButton addCardBtn = createActionBtn(t("+ 添加初始卡牌", "+ Add Initial Card"), () -> addScenarioCardRow(cardBox, "", "1"));
         cardBox.add(addCardBtn).left().row();
         form.add(cardBox).colspan(2).left().padBottom(15).row();
 
-        // 初始事件
         Table eventBox = new Table();
-        eventBox.add(new Label("初始事件:", ui.labelStyle(Color.WHITE))).left().colspan(2).row();
+        eventBox.add(new Label(t("初始事件:", "Initial Events:"), ui.labelStyle(Color.WHITE))).left().colspan(2).row();
         if (editData != null) {
             for (String ev : editData.autoEvents) addScenarioEventRow(eventBox, ev);
         }
-        TextButton addEventBtn = new TextButton("+ 添加初始事件", ui.buttonStyle());
-        addEventBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { addScenarioEventRow(eventBox, ""); } });
+        TextButton addEventBtn = createActionBtn(t("+ 添加初始事件", "+ Add Initial Event"), () -> addScenarioEventRow(eventBox, ""));
         eventBox.add(addEventBtn).left().row();
         form.add(eventBox).colspan(2).left().padBottom(15).row();
 
-        TextButton saveBtn = new TextButton(editData == null ? "暂存开局" : "保存修改", ui.buttonStyle());
-        saveBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                if (idField.getText().isEmpty()) { statusLabel.setText("ID不能为空喵！"); return; }
-                if (editData != null) draftScenarios.remove(editData);
-                ScenarioDef s = new ScenarioDef();
-                s.id = idField.getText();
-                s.cards = parseScenarioCardTable(cardBox);
-                s.autoEvents = parseScenarioEventTable(eventBox);
-
-                draftScenarios.add(s);
-                draftZh.put("scenario." + s.id + ".name", nameField.getText());
-                draftEn.put("scenario." + s.id + ".name", enNameField.getText());
-                statusLabel.setText("开局 [" + s.id + "] 已保存喵！");
-                refreshList();
-                if (editData == null) buildForm(null);
-            }
+        TextButton saveBtn = createActionBtn(editData == null ? t("暂存开局", "Draft Scenario") : t("保存修改", "Save Changes"), () -> {
+            if (idField.getText().isEmpty()) return;
+            if (editData != null) draftScenarios.remove(editData);
+            ScenarioDef s = new ScenarioDef();
+            s.id = idField.getText();
+            s.cards = parseScenarioCardTable(cardBox);
+            s.autoEvents = parseScenarioEventTable(eventBox);
+            draftScenarios.add(s);
+            draftZh.put("scenario." + s.id + ".name", nameField.getText());
+            draftEn.put("scenario." + s.id + ".name", enNameField.getText());
+            refreshList();
+            if (editData == null) buildForm(null);
+            showToast(t("开局已暂存", "Scenario Drafted"), Color.GOLD);
         });
         form.add(saveBtn).colspan(2).padTop(10).row();
         rightFormTable.add(form).growX().top().pad(10);
     }
 
-    // --- 全局配置表单 ---
     private void buildConfigForm() {
         Table form = createFormPanel();
-        form.add(new Label("全局配置", ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
-
-        TextField titleField = addInput(form, "窗口标题:", draftConfig.windowTitle);
-        TextField iconField = addInput(form, "窗口图标:", draftConfig.windowIcon);
-
-        TextButton saveBtn = new TextButton("保存配置", ui.buttonStyle());
-        saveBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                draftConfig.windowTitle = titleField.getText();
-                draftConfig.windowIcon = iconField.getText();
-                statusLabel.setText("全局配置已保存喵！");
-            }
+        form.add(new Label(t("全局配置", "Global Config"), ui.labelStyle(Color.GOLD))).colspan(2).padBottom(20).row();
+        TextField titleField = addInput(form, t("窗口标题:", "Window Title:"), draftConfig.windowTitle);
+        TextField iconField = addInput(form, t("窗口图标:", "Window Icon:"), draftConfig.windowIcon);
+        TextButton saveBtn = createActionBtn(t("保存配置", "Save Config"), () -> {
+            draftConfig.windowTitle = titleField.getText();
+            draftConfig.windowIcon = iconField.getText();
+            showToast(t("配置已保存", "Config Saved"), Color.GREEN);
         });
         form.add(saveBtn).colspan(2).padTop(10).row();
         rightFormTable.add(form).growX().top().pad(10);
     }
 
-    // ================== 动态UI生成与解析（带删除功能）==================
     private void addAspectRow(Table box, String id, String zh, String en, String amt) {
         Table row = new Table();
         row.padBottom(5);
         TextField idF = new TextField(id, ui.textFieldStyle()); idF.setMessageText("id"); row.add(idF).width(100).padRight(5);
-        TextField zhF = new TextField(zh, ui.textFieldStyle()); zhF.setMessageText("中文"); row.add(zhF).width(100).padRight(5);
-        TextField enF = new TextField(en, ui.textFieldStyle()); enF.setMessageText("英文"); row.add(enF).width(100).padRight(5);
-        TextField amtF = new TextField(amt, ui.textFieldStyle()); amtF.setMessageText("数量"); row.add(amtF).width(60).padRight(5);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { row.remove(); } });
+        TextField zhF = new TextField(zh, ui.textFieldStyle()); zhF.setMessageText(t("中文", "Chinese")); row.add(zhF).width(100).padRight(5);
+        TextField enF = new TextField(en, ui.textFieldStyle()); enF.setMessageText(t("英文", "English")); row.add(enF).width(100).padRight(5);
+        TextField amtF = new TextField(amt, ui.textFieldStyle()); amtF.setMessageText(t("数量", "Amount")); row.add(amtF).width(60).padRight(5);
+        TextButton delBtn = createActionBtn("-", row::remove);
         row.add(delBtn).size(30, 30);
-
         box.add(row).left().row();
     }
 
@@ -609,13 +596,12 @@ public class ModEditorScreen implements Screen {
     private void addTriggerRow(Table box, String slot, String event) {
         Table row = new Table();
         row.padBottom(5);
-        TextField slotF = new TextField(slot, ui.textFieldStyle()); slotF.setMessageText("槽位ID"); row.add(slotF).width(150).padRight(5);
-        TextField eventF = new TextField(event, ui.textFieldStyle()); eventF.setMessageText("事件ID"); row.add(eventF).width(150).padRight(5);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { row.remove(); } });
+        TextField slotF = new TextField(slot, ui.textFieldStyle()); slotF.setMessageText(t("槽位ID", "Slot ID")); row.add(slotF).width(150).padRight(5);
+        TextField eventF = new TextField(event, ui.textFieldStyle()); eventF.setMessageText(t("事件ID", "Event ID")); row.add(eventF).width(150).padRight(5);
+        slotF.setCursorPosition(slotF.getText().length());
+        eventF.setCursorPosition(eventF.getText().length());
+        TextButton delBtn = createActionBtn("-", row::remove);
         row.add(delBtn).size(30, 30);
-
         box.add(row).left().row();
     }
 
@@ -642,12 +628,9 @@ public class ModEditorScreen implements Screen {
         Table row = new Table();
         row.padBottom(5);
         TextField idF = new TextField(id, ui.textFieldStyle()); idF.setMessageText("id"); row.add(idF).width(120).padRight(5);
-        TextField accF = new TextField(accepts, ui.textFieldStyle()); accF.setMessageText("限制词条(如money:1)"); row.add(accF).width(180).padRight(5);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { row.remove(); } });
+        TextField accF = new TextField(accepts, ui.textFieldStyle()); accF.setMessageText(t("限制词条(如money:1)", "Aspects (e.g. money:1)")); row.add(accF).width(180).padRight(5);
+        TextButton delBtn = createActionBtn("-", row::remove);
         row.add(delBtn).size(30, 30);
-
         box.add(row).left().row();
     }
 
@@ -674,12 +657,9 @@ public class ModEditorScreen implements Screen {
     private void addForceDrainRow(Table box, String val) {
         Table row = new Table();
         row.padBottom(5);
-        TextField f = new TextField(val, ui.textFieldStyle()); f.setMessageText("词条ID"); row.add(f).width(150).padRight(5);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { row.remove(); } });
+        TextField f = new TextField(val, ui.textFieldStyle()); f.setMessageText(t("词条ID", "Aspect ID")); row.add(f).width(150).padRight(5);
+        TextButton delBtn = createActionBtn("-", row::remove);
         row.add(delBtn).size(30, 30);
-
         box.add(row).left().row();
     }
 
@@ -697,13 +677,10 @@ public class ModEditorScreen implements Screen {
     private void addInputRow(Table box, String key, String val) {
         Table row = new Table();
         row.padBottom(5);
-        TextField kF = new TextField(key, ui.textFieldStyle()); kF.setMessageText("词条"); row.add(kF).width(120).padRight(5);
-        TextField vF = new TextField(val, ui.textFieldStyle()); vF.setMessageText("数量"); row.add(vF).width(60).padRight(5);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { row.remove(); } });
+        TextField kF = new TextField(key, ui.textFieldStyle()); kF.setMessageText(t("词条", "Aspect")); row.add(kF).width(120).padRight(5);
+        TextField vF = new TextField(val, ui.textFieldStyle()); vF.setMessageText(t("数量", "Amount")); row.add(vF).width(60).padRight(5);
+        TextButton delBtn = createActionBtn("-", row::remove);
         row.add(delBtn).size(30, 30);
-
         box.add(row).left().row();
     }
 
@@ -725,13 +702,10 @@ public class ModEditorScreen implements Screen {
     private void addScenarioCardRow(Table box, String id, String amt) {
         Table row = new Table();
         row.padBottom(5);
-        TextField idF = new TextField(id, ui.textFieldStyle()); idF.setMessageText("卡牌ID"); row.add(idF).width(150).padRight(5);
-        TextField amtF = new TextField(amt, ui.textFieldStyle()); amtF.setMessageText("数量"); row.add(amtF).width(60).padRight(5);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { row.remove(); } });
+        TextField idF = new TextField(id, ui.textFieldStyle()); idF.setMessageText(t("卡牌ID", "Card ID")); row.add(idF).width(150).padRight(5);
+        TextField amtF = new TextField(amt, ui.textFieldStyle()); amtF.setMessageText(t("数量", "Amount")); row.add(amtF).width(60).padRight(5);
+        TextButton delBtn = createActionBtn("-", row::remove);
         row.add(delBtn).size(30, 30);
-
         box.add(row).left().row();
     }
 
@@ -758,12 +732,9 @@ public class ModEditorScreen implements Screen {
     private void addScenarioEventRow(Table box, String eventId) {
         Table row = new Table();
         row.padBottom(5);
-        TextField evF = new TextField(eventId, ui.textFieldStyle()); evF.setMessageText("事件ID"); row.add(evF).width(200).padRight(5);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { row.remove(); } });
+        TextField evF = new TextField(eventId, ui.textFieldStyle()); evF.setMessageText(t("事件ID", "Event ID")); row.add(evF).width(200).padRight(5);
+        TextButton delBtn = createActionBtn("-", row::remove);
         row.add(delBtn).size(30, 30);
-
         box.add(row).left().row();
     }
 
@@ -778,218 +749,146 @@ public class ModEditorScreen implements Screen {
         return list;
     }
 
-    // 辅助方法：生成一行随机选项输入框
-    private void addRandomOptionRow(Table container, String target, String weight) {
-        Table row = new Table();
-        row.padBottom(5);
-        TextField idF = new TextField(target, ui.textFieldStyle());
-        idF.setMessageText("卡牌ID");
-        row.add(idF).width(120).padRight(5);
+    // ================= 可视化动作树构建与解析 =================
 
-        TextField wF = new TextField(weight, ui.textFieldStyle());
-        wF.setMessageText("权重");
-        row.add(wF).width(60).padRight(5);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { row.remove(); } });
-        row.add(delBtn).size(30, 30);
-
-        container.add(row).left().row();
-    }
-
-    private void addRandomDoRow(Table container, int weight, Action action) {
-        Table row = new Table();
-        row.setBackground(ui.rect(new Color(0.25f, 0.2f, 0.3f, 1f))); // 区分度高的底色
-        row.pad(10).left().top();
-
-        // 顶部：权重 + 删除
-        Table top = new Table();
-        TextField wF = new TextField(String.valueOf(weight), ui.textFieldStyle());
-        wF.setMessageText("权重");
-        top.add(new Label("权重:", ui.labelStyle(Color.WHITE))).padRight(5);
-        top.add(wF).width(60).padRight(20);
-
-        // 嵌套的动作容器
-        Table innerActionContainer = new Table();
-
-        TextButton addActBtn = new TextButton("+ 插入代码块", ui.buttonStyle());
-        addActBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent e, Actor a) {
-                addActionBlock(innerActionContainer, null);
-            }
-        });
-        top.add(addActBtn);
-
-        TextButton delBtn = new TextButton("-", ui.buttonStyle());
-        delBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent e, Actor a) {
-                row.remove();
-            }
-        });
-        top.add(delBtn).padLeft(10);
-
-        row.add(top).left().row();
-
-        // 如果已有动作，直接加载进去
-        if (action != null) {
-            addActionBlock(innerActionContainer, action);
-        }
-
-        row.add(innerActionContainer).left().padTop(5).row();
-        container.add(row).left().padBottom(10).row();
-    }
-
-    // ================== 动作树（增加红绿辨识度与删除） ==================
     private void addActionBlock(Table container, Action existing) {
         Table block = new Table();
-        block.setBackground(ui.rect(new Color(0.2f, 0.22f, 0.28f, 1f)));
-        block.pad(10).left().top();
+        block.setBackground(ui.rect(new Color(0.2f, 0.25f, 0.3f, 1f)));
+        block.pad(5).left().top();
 
-        // 顶部控制条
-        Table topRow = new Table();
         SelectBox<String> typeBox = new SelectBox<>(ui.selectBoxStyle());
-        typeBox.setItems("create", "consume", "drain", "check", "chance", "trigger", "end_game", "unlock_verb", "play_music", "modify_aspects", "random_create", "random_do");
-        topRow.add(typeBox).width(120).padRight(5);
+        typeBox.setItems("create", "consume", "drain", "check", "chance", "trigger", "end_game", "unlock_verb", "play_music", "modify_aspects", "random_create", "random_trigger", "random_do");
+        // 👈 核心修复 1：拉宽下拉框，防止 random_ 截断
+        block.add(typeBox).width(180).padRight(10);
 
         Table params = new Table();
-        topRow.add(params);
+        block.add(params);
 
-        // 删除这个动作块的按钮
-        TextButton delBlockBtn = new TextButton("移除动作", ui.buttonStyle());
-        delBlockBtn.addListener(new ChangeListener() { @Override public void changed(ChangeEvent e, Actor a) { block.remove(); } });
-        topRow.add(delBlockBtn).padLeft(20);
+        Table successBox = new Table(); successBox.setName("successBox"); successBox.padLeft(20);
+        Table failBox = new Table(); failBox.setName("failBox"); failBox.padLeft(20);
 
-        block.add(topRow).left().row();
-
-        // 子节点区域，加上了极其显眼的红绿背景
-        Table successBox = new Table(); successBox.setName("successBox");
-        successBox.setBackground(ui.rect(new Color(0.1f, 0.3f, 0.15f, 1f))); // 成功绿
-        successBox.pad(5);
-
-        Table failBox = new Table(); failBox.setName("failBox");
-        failBox.setBackground(ui.rect(new Color(0.35f, 0.1f, 0.1f, 1f))); // 失败红
-        failBox.pad(5);
+        // 👈 修复：使用数组包装 existing 以满足 effectively final 要求
+        final Action[] currentExistingRef = new Action[] { existing };
 
         Runnable updateParams = () -> {
             params.clear();
-            String t = typeBox.getSelected();
-            if (t.equals("create")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText("卡牌ID"); params.add(f).width(100).padRight(5);
-                TextField a = new TextField("1", ui.textFieldStyle()); a.setName("amount"); params.add(a).width(50);
-            } else if (t.equals("consume") || t.equals("drain")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText("词条"); params.add(f).width(100).padRight(5);
-                TextField a = new TextField("1", ui.textFieldStyle()); a.setName("amount"); params.add(a).width(50);
-            } else if (t.equals("chance")) {
-                TextField f = new TextField("50", ui.textFieldStyle()); f.setName("percent"); params.add(f).width(50);
-            } else if (t.equals("check")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("aspects"); f.setMessageText("词条组"); params.add(f).width(150);
-            } else if (t.equals("trigger")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText("事件ID"); params.add(f).width(150);
-            } else if (t.equals("end_game")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText("结局ID"); params.add(f).width(150);
-            } else if (t.equals("unlock_verb")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText("槽位ID"); params.add(f).width(150);
-            } else if (t.equals("play_music")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText("路径"); params.add(f).width(150);
-            } else if (t.equals("modify_aspects")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText("卡牌ID"); params.add(f).width(100).padRight(5);
-                TextField f2 = new TextField("", ui.textFieldStyle()); f2.setName("aspects"); f2.setMessageText("词条组"); params.add(f2).width(150);
-            } else if (t.equals("random_create")) {
-                // 创建存放选项的容器
-                Table optsContainer = new Table();
-                optsContainer.setName("random_opts_container");
+            String tName = typeBox.getSelected();
+            if (tName.equals("create")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("卡牌ID", "Card ID")); params.add(f).width(120);
+                TextField a = new TextField("1", ui.textFieldStyle()); a.setName("amount"); params.add(a).width(60);
+            } else if (tName.equals("consume") || tName.equals("drain")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("词条", "Aspect")); params.add(f).width(120);
+                TextField a = new TextField("1", ui.textFieldStyle()); a.setName("amount"); params.add(a).width(60);
+            } else if (tName.equals("chance")) {
+                TextField f = new TextField("50", ui.textFieldStyle()); f.setName("percent"); params.add(f).width(60);
+            } else if (tName.equals("check")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("aspects"); f.setMessageText(t("词条组", "Aspects")); params.add(f).width(200);
+            } else if (tName.equals("trigger")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("事件ID", "Event ID")); params.add(f).width(200);
+            } else if (tName.equals("end_game")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("结局ID", "Ending ID")); params.add(f).width(200);
+            } else if (tName.equals("unlock_verb")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("槽位ID", "Slot ID")); params.add(f).width(200);
+            } else if (tName.equals("play_music")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("路径", "Path")); params.add(f).width(200);
+            } else if (tName.equals("modify_aspects")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("卡牌ID", "Card ID")); params.add(f).width(120);
+                TextField f2 = new TextField("", ui.textFieldStyle()); f2.setName("aspects"); f2.setMessageText(t("词条组", "Aspects")); params.add(f2).width(200);
+            } else if (tName.equals("random_create") || tName.equals("random_trigger") || tName.equals("random_do")) {
+                // 👈 核心修复 2：从单行文本框改成了可视化动态行！
+                Table optsBox = new Table();
+                optsBox.setName("optsBox");
 
-                // 如果是编辑现有动作，把之前的数据加载出来
-                if (existing instanceof Actions.RandomCreate) {
-                    Actions.RandomCreate rc = (Actions.RandomCreate) existing;
-                    for (Actions.RandomCreate.Option opt : rc.options) {
-                        addRandomOptionRow(optsContainer, opt.target, String.valueOf(opt.weight));
-                    }
-                } else {
-                    // 如果是新建，默认给一行空的
-                    addRandomOptionRow(optsContainer, "", "1");
+                if (currentExistingRef[0] instanceof Actions.RandomCreate) {
+                    for (Actions.RandomCreate.Option o : ((Actions.RandomCreate) currentExistingRef[0]).options) addRandomRow(optsBox, tName, o.target, o.target, String.valueOf(o.weight), null);
+                } else if (currentExistingRef[0] instanceof Actions.RandomTrigger) {
+                    for (Actions.RandomTrigger.Option o : ((Actions.RandomTrigger) currentExistingRef[0]).options) addRandomRow(optsBox, tName, o.event, o.event, String.valueOf(o.weight), null);
+                } else if (currentExistingRef[0] instanceof Actions.RandomDo) {
+                    for (Actions.RandomDo.Option o : ((Actions.RandomDo) currentExistingRef[0]).options) addRandomRow(optsBox, tName, "", "", String.valueOf(o.weight), o.action);
                 }
 
-                // 添加加号按钮
-                TextButton addOptBtn = new TextButton("+ 添加项", ui.buttonStyle());
-                addOptBtn.addListener(new ChangeListener() {
-                    @Override public void changed(ChangeEvent e, Actor a) {
-                        addRandomOptionRow(optsContainer, "", "1");
-                    }
-                });
+                // 如果导入的没数据，默认给一个空行
+                if (optsBox.getChildren().isEmpty()) addRandomRow(optsBox, tName, "", "", "1", null);
 
-                params.add(optsContainer).left().row();
-                params.add(addOptBtn).left().padTop(5);
-            } else if (t.equals("random_do")) {
-                Table optsContainer = new Table();
-                optsContainer.setName("random_do_container");
-
-                if (existing instanceof Actions.RandomDo) {
-                    Actions.RandomDo rd = (Actions.RandomDo) existing;
-                    for (Actions.RandomDo.Option opt : rd.options) {
-                        addRandomDoRow(optsContainer, opt.weight, opt.action);
-                    }
-                } else {
-                    addRandomDoRow(optsContainer, 1, null); // 默认给一个空动作
-                }
-
-                TextButton addOptBtn = new TextButton("+ 添加随机动作", ui.buttonStyle());
-                addOptBtn.addListener(new ChangeListener() {
-                    @Override public void changed(ChangeEvent e, Actor a) {
-                        addRandomDoRow(optsContainer, 1, null);
-                    }
-                });
-
-                params.add(optsContainer).left().row();
-                params.add(addOptBtn).left().padTop(5);
+                TextButton addOpt = createActionBtn(t("+ 添加项", "+ Add Option"), () -> addRandomRow(optsBox, tName, "", "", "1", null));
+                params.add(optsBox).left().row();
+                params.add(addOpt).left().padTop(5);
             }
         };
-        typeBox.addListener(new ChangeListener() { public void changed(ChangeEvent e, Actor a) { updateParams.run(); } });
 
-        // 操作按钮
-        Table actionBtns = new Table();
+        typeBox.addListener(new ChangeListener() { public void changed(ChangeEvent e, Actor a) {
+            // 修复：使用 currentExistingRef[0] 判断并重置
+            if (typeBox.getSelected().startsWith("random_") && !(currentExistingRef[0] instanceof Actions.RandomCreate || currentExistingRef[0] instanceof Actions.RandomTrigger || currentExistingRef[0] instanceof Actions.RandomDo)) {
+                currentExistingRef[0] = null;
+            }
+            updateParams.run();
+        } });
 
-        Table succHeader = new Table();
-        succHeader.add(new Label("成功时 -> ", ui.labelStyle(Color.GREEN)));
-        TextButton addS = new TextButton("+", ui.buttonStyle());
-        addS.addListener(new ChangeListener() { public void changed(ChangeEvent e, Actor a) { addActionBlock(successBox, null); } });
-        succHeader.add(addS);
-        actionBtns.add(succHeader).padRight(10);
+        Table buttons = new Table();
+        buttons.add(new Label(t("成功:", "Success:"), ui.labelStyle(Color.GREEN)));
+        TextButton addS = createActionBtn("+", () -> addActionBlock(successBox, null));
+        buttons.add(addS).padRight(10);
+        buttons.add(new Label(t("失败:", "Fail:"), ui.labelStyle(Color.RED)));
+        TextButton addF = createActionBtn("+", () -> addActionBlock(failBox, null));
+        buttons.add(addF);
 
-        Table failHeader = new Table();
-        failHeader.add(new Label("失败时 -> ", ui.labelStyle(Color.SALMON)));
-        TextButton addF = new TextButton("+", ui.buttonStyle());
-        addF.addListener(new ChangeListener() { public void changed(ChangeEvent e, Actor a) { addActionBlock(failBox, null); } });
-        failHeader.add(addF);
-        actionBtns.add(failHeader);
-
-        block.add(actionBtns).left().padTop(10).row();
+        block.add(buttons).row();
         block.add(successBox).left().row();
         block.add(failBox).left().row();
 
         container.add(block).left().padBottom(10).row();
 
-        if (existing != null) {
-            if (existing instanceof Actions.Create) typeBox.setSelected("create");
-            else if (existing instanceof Actions.Consume) typeBox.setSelected("consume");
-            else if (existing instanceof Actions.Drain) typeBox.setSelected("drain");
-            else if (existing instanceof Actions.Check) typeBox.setSelected("check");
-            else if (existing instanceof Actions.Chance) typeBox.setSelected("chance");
-            else if (existing instanceof Actions.TriggerEvent) typeBox.setSelected("trigger");
-            else if (existing instanceof Actions.EndGame) typeBox.setSelected("end_game");
-            else if (existing instanceof Actions.UnlockVerb) typeBox.setSelected("unlock_verb");
-            else if (existing instanceof Actions.PlayMusic) typeBox.setSelected("play_music");
-            else if (existing instanceof Actions.ModifyAspects) typeBox.setSelected("modify_aspects");
+        if (currentExistingRef[0] != null) {
+            if (currentExistingRef[0] instanceof Actions.Create) typeBox.setSelected("create");
+            else if (currentExistingRef[0] instanceof Actions.Consume) typeBox.setSelected("consume");
+            else if (currentExistingRef[0] instanceof Actions.Drain) typeBox.setSelected("drain");
+            else if (currentExistingRef[0] instanceof Actions.Check) typeBox.setSelected("check");
+            else if (currentExistingRef[0] instanceof Actions.Chance) typeBox.setSelected("chance");
+            else if (currentExistingRef[0] instanceof Actions.TriggerEvent) typeBox.setSelected("trigger");
+            else if (currentExistingRef[0] instanceof Actions.EndGame) typeBox.setSelected("end_game");
+            else if (currentExistingRef[0] instanceof Actions.UnlockVerb) typeBox.setSelected("unlock_verb");
+            else if (currentExistingRef[0] instanceof Actions.PlayMusic) typeBox.setSelected("play_music");
+            else if (currentExistingRef[0] instanceof Actions.ModifyAspects) typeBox.setSelected("modify_aspects");
+            else if (currentExistingRef[0] instanceof Actions.RandomCreate) typeBox.setSelected("random_create");
+            else if (currentExistingRef[0] instanceof Actions.RandomTrigger) typeBox.setSelected("random_trigger");
+            else if (currentExistingRef[0] instanceof Actions.RandomDo) typeBox.setSelected("random_do");
             updateParams.run();
         } else {
             typeBox.setSelected("create");
         }
     }
 
+    // 👈 核心新增：生成带权重的动态行
+    private void addRandomRow(Table box, String type, String target, String event, String weight, Action nestedAction) {
+        Table row = new Table();
+        row.padBottom(5);
+
+        if (type.equals("random_create")) {
+            TextField idF = new TextField(target, ui.textFieldStyle()); idF.setName("target"); idF.setMessageText(t("卡牌ID", "Card ID")); row.add(idF).width(150).padRight(5);
+            TextField wF = new TextField(weight, ui.textFieldStyle()); wF.setName("weight"); wF.setMessageText(t("权重", "Weight")); row.add(wF).width(80).padRight(5);
+        } else if (type.equals("random_trigger")) {
+            TextField idF = new TextField(event, ui.textFieldStyle()); idF.setName("event"); idF.setMessageText(t("事件ID", "Event ID")); row.add(idF).width(150).padRight(5);
+            TextField wF = new TextField(weight, ui.textFieldStyle()); wF.setName("weight"); wF.setMessageText(t("权重", "Weight")); row.add(wF).width(80).padRight(5);
+        } else if (type.equals("random_do")) {
+            TextField wF = new TextField(weight, ui.textFieldStyle()); wF.setName("weight"); wF.setMessageText(t("权重", "Weight")); row.add(wF).width(80).padRight(5);
+            Table actContainer = new Table();
+            actContainer.setName("actContainer");
+            if (nestedAction != null) addActionBlock(actContainer, nestedAction);
+            row.add(actContainer).padRight(5);
+        }
+
+        TextButton delBtn = createActionBtn("-", row::remove);
+        row.add(delBtn).size(30, 30).top();
+        box.add(row).left().row();
+    }
+
     private ArrayList<Action> parseActionTree(Table container) {
         ArrayList<Action> list = new ArrayList<>();
         for (Actor c : container.getChildren()) {
-            if (c instanceof Table) list.add(parseActionBlock((Table) c));
+            if (c instanceof Table) {
+                Action a = parseActionBlock((Table) c);
+                if (a != null) list.add(a);
+            }
         }
         return list;
     }
@@ -1043,20 +942,33 @@ public class ModEditorScreen implements Screen {
             a = c;
         } else if (type.equals("random_create")) {
             Actions.RandomCreate c = new Actions.RandomCreate();
-            Table optsContainer = block.findActor("random_opts_container");
-            if (optsContainer != null) {
-                for (Actor child : optsContainer.getChildren()) {
-                    if (child instanceof Table && !(child instanceof Button)) {
-                        Table row = (Table) child;
+            Table optsBox = block.findActor("optsBox");
+            if (optsBox != null) {
+                for (Actor r : optsBox.getChildren()) {
+                    if (r instanceof Table && !(r instanceof Button)) {
+                        Table row = (Table) r;
                         if (row.getChildren().size >= 2) {
-                            String target = ((TextField) row.getChild(0)).getText().trim();
-                            String weightStr = ((TextField) row.getChild(1)).getText().trim();
-                            if (!target.isEmpty()) {
-                                Actions.RandomCreate.Option opt = new Actions.RandomCreate.Option();
-                                opt.target = target;
-                                opt.weight = parseInt(weightStr);
-                                c.options.add(opt);
-                            }
+                            Actions.RandomCreate.Option opt = new Actions.RandomCreate.Option();
+                            opt.target = ((TextField) row.findActor("target")).getText().trim();
+                            opt.weight = parseInt(((TextField) row.findActor("weight")).getText());
+                            if (!opt.target.isEmpty()) c.options.add(opt);
+                        }
+                    }
+                }
+            }
+            a = c;
+        } else if (type.equals("random_trigger")) {
+            Actions.RandomTrigger c = new Actions.RandomTrigger();
+            Table optsBox = block.findActor("optsBox");
+            if (optsBox != null) {
+                for (Actor r : optsBox.getChildren()) {
+                    if (r instanceof Table && !(r instanceof Button)) {
+                        Table row = (Table) r;
+                        if (row.getChildren().size >= 2) {
+                            Actions.RandomTrigger.Option opt = new Actions.RandomTrigger.Option();
+                            opt.event = ((TextField) row.findActor("event")).getText().trim();
+                            opt.weight = parseInt(((TextField) row.findActor("weight")).getText());
+                            if (!opt.event.isEmpty()) c.options.add(opt);
                         }
                     }
                 }
@@ -1064,28 +976,19 @@ public class ModEditorScreen implements Screen {
             a = c;
         } else if (type.equals("random_do")) {
             Actions.RandomDo c = new Actions.RandomDo();
-            Table optsContainer = block.findActor("random_do_container");
-            if (optsContainer != null) {
-                for (Actor child : optsContainer.getChildren()) {
-                    if (child instanceof Table && !(child instanceof Button)) {
-                        Table row = (Table) child;
-                        // row 里的第一个元素是 top 表，包含权重
-                        Table top = (Table) row.getChild(0);
-                        String weightStr = ((TextField) top.getChild(1)).getText().trim();
-                        // row 里的第二个元素是嵌套动作容器
-                        Table actionContainer = (Table) row.getChild(1);
-
-                        Actions.RandomDo.Option opt = new Actions.RandomDo.Option();
-                        opt.weight = parseInt(weightStr);
-
-                        // 解析嵌套动作
-                        ArrayList<Action> innerActions = parseActionTree(actionContainer);
-                        if (!innerActions.isEmpty()) {
-                            opt.action = innerActions.get(0); // 假设只取第一个动作
-                        }
-
-                        if (opt.action != null) {
-                            c.options.add(opt);
+            Table optsBox = block.findActor("optsBox");
+            if (optsBox != null) {
+                for (Actor r : optsBox.getChildren()) {
+                    if (r instanceof Table && !(r instanceof Button)) {
+                        Table row = (Table) r;
+                        if (row.getChildren().size >= 2) {
+                            Actions.RandomDo.Option opt = new Actions.RandomDo.Option();
+                            opt.weight = parseInt(((TextField) row.findActor("weight")).getText());
+                            Table actContainer = row.findActor("actContainer");
+                            if (actContainer != null && actContainer.getChildren().size > 0) {
+                                opt.action = parseActionBlock((Table) actContainer.getChild(0));
+                            }
+                            if (opt.action != null) c.options.add(opt);
                         }
                     }
                 }
@@ -1102,7 +1005,6 @@ public class ModEditorScreen implements Screen {
         return a;
     }
 
-    // ================== 辅助与落盘 ==================
     private Table createFormPanel() {
         Table form = new Table();
         form.setBackground(ui.rect(new Color(0.2f, 0.22f, 0.28f, 1f)));
@@ -1119,12 +1021,14 @@ public class ModEditorScreen implements Screen {
 
     private int parseInt(String s) { try { return Integer.parseInt(s.trim()); } catch (Exception e) { return 1; } }
     private float parseFloat(String s, float def) { try { return Float.parseFloat(s.trim()); } catch (Exception e) { return def; } }
+
     private String aspectsToString(HashMap<String, Integer> map) {
         if (map == null || map.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
         for (String k : map.keySet()) { if (sb.length() > 0) sb.append(","); sb.append(k).append(":").append(map.get(k)); }
         return sb.toString();
     }
+
     private HashMap<String, Integer> parseAspectsString(String str) {
         HashMap<String, Integer> map = new HashMap<>();
         if (str == null || str.isEmpty()) return map;
@@ -1152,26 +1056,76 @@ public class ModEditorScreen implements Screen {
         json.addClassTag("play_music", Actions.PlayMusic.class);
         json.addClassTag("modify_aspects", Actions.ModifyAspects.class);
         json.addClassTag("random_create", Actions.RandomCreate.class);
+        json.addClassTag("random_trigger", Actions.RandomTrigger.class);
+        json.addClassTag("random_do", Actions.RandomDo.class);
+
+        json.setElementType(Element.class, "aspects", Integer.class);
+        json.setElementType(Element.class, "hiddenAspects", Integer.class);
+        json.setElementType(Element.class, "triggers", Element.Trigger.class);
+        json.setElementType(EventDef.class, "input", Integer.class);
+        json.setElementType(EventDef.class, "slots", SlotDef.class);
+        json.setElementType(EventDef.class, "action", Action.class);
+        json.setElementType(EventDef.class, "products", EventDef.Product.class);
+        json.setElementType(Action.class, "onSuccess", Action.class);
+        json.setElementType(Action.class, "onFail", Action.class);
+        json.setElementType(Actions.RandomCreate.class, "options", Actions.RandomCreate.Option.class);
+        json.setElementType(Actions.RandomTrigger.class, "options", Actions.RandomTrigger.Option.class);
+        json.setElementType(Actions.RandomDo.class, "options", Actions.RandomDo.Option.class);
+        json.setElementType(Actions.RandomDo.Option.class, "action", Action.class);
+
         json.setOutputType(JsonWriter.OutputType.json);
         return json;
     }
 
     private void saveModToDisk() {
+        currentModName = modNameField.getText().trim();
+        if (currentModName.isEmpty()) currentModName = "MyCustomMod";
+
         FileHandle dir = Gdx.files.local("mods/" + currentModName + "/");
         dir.mkdirs();
+
         Json json = createJson();
 
-        if (!draftElements.isEmpty()) dir.child("elements.json").writeString(json.toJson(draftElements), false);
-        if (!draftEvents.isEmpty()) dir.child("events.json").writeString(json.toJson(draftEvents), false);
-        if (!draftEndings.isEmpty()) dir.child("endings.json").writeString(json.toJson(draftEndings), false);
-        if (!draftVerbs.isEmpty()) dir.child("verbs.json").writeString(json.toJson(draftVerbs), false);
-        if (!draftScenarios.isEmpty()) dir.child("scenarios.json").writeString(json.toJson(draftScenarios), false);
+        if (!draftElements.isEmpty()) {
+            dir.child("elements.json").writeString(json.prettyPrint(draftElements), false, "UTF-8");
+        }
+        if (!draftEvents.isEmpty()) {
+            dir.child("events.json").writeString(json.prettyPrint(draftEvents), false, "UTF-8");
+        }
 
-        dir.child("config.json").writeString(json.toJson(draftConfig), false);
-        if (!draftZh.isEmpty()) dir.child("text_zh.json").writeString(json.toJson(draftZh), false);
-        if (!draftEn.isEmpty()) dir.child("text_en.json").writeString(json.toJson(draftEn), false);
+        if (!draftEndings.isEmpty()) {
+            json.setTypeName(null);
+            try {
+                dir.child("endings.json").writeString(json.prettyPrint(draftEndings), false, "UTF-8");
+            } finally {
+                json.setTypeName("type");
+            }
+        }
 
-        statusLabel.setText("✅ 所有数据已保存至 mods/" + currentModName + "/ 喵！重启生效喵！");
+        if (!draftVerbs.isEmpty()) {
+            dir.child("verbs.json").writeString(json.prettyPrint(draftVerbs), false, "UTF-8");
+        }
+        if (!draftScenarios.isEmpty()) {
+            dir.child("scenarios.json").writeString(json.prettyPrint(draftScenarios), false, "UTF-8");
+        }
+
+        dir.child("config.json").writeString(json.prettyPrint(draftConfig), false, "UTF-8");
+
+        Json textJson = new Json();
+        textJson.setTypeName(null);
+        textJson.setOutputType(JsonWriter.OutputType.json);
+
+        draftZh.values().removeIf(val -> val == null || val.trim().isEmpty());
+        draftEn.values().removeIf(val -> val == null || val.trim().isEmpty());
+
+        if (!draftZh.isEmpty()) {
+            dir.child("text_zh.json").writeString(textJson.prettyPrint(draftZh), false, "UTF-8");
+        }
+        if (!draftEn.isEmpty()) {
+            dir.child("text_en.json").writeString(textJson.prettyPrint(draftEn), false, "UTF-8");
+        }
+
+        showToast(t("保存成功！", "Saved successfully!"), Color.GREEN);
     }
 
     @Override public void show() { Gdx.input.setInputProcessor(stage); }

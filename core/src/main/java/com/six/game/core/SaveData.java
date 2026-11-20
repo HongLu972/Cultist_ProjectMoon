@@ -32,4 +32,5 @@ public class SaveData {
     public List<SituationData> situations = new ArrayList<>();
     public Chronicle chronicle = new Chronicle();
     public String ending; // 记录结局状态
+    public String bgmPath; // 记录当前播放的BGM
 }

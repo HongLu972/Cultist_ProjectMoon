@@ -7,8 +7,10 @@ public class Chronicle {
     public static class Record {
         public float gameTime;
         public String text;
-        // 必须有无参构造
+
+        // 👇 必须要有无参构造函数，不然反射会炸！
         public Record() {}
+
         public Record(float time, String text) {
             this.gameTime = time;
             this.text = text;

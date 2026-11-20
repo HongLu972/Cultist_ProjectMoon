@@ -1,0 +1,500 @@
+{
+"slot.f_slot_3.name": {
+	"value": "命运"
+},
+"slot.out.name": {
+	"value": "外出"
+},
+"event.time_D.name": {
+	"value": "Michelle的绝望IV"
+},
+"ui.seed_hint": {
+	"value": "放入卡牌开始"
+},
+"event.work_basic.name": {
+	"value": "工作"
+},
+"ui.title": {
+	"value": "研究所"
+},
+"ui.remaining": {
+	"value": "剩余"
+},
+"slot.study.desc": {
+	"value": "稳定心神。"
+},
+"aspect.inspire.name": {
+	"value": "灵感"
+},
+"slot.study.name": {
+	"value": "思考"
+},
+"event.time_C.name": {
+	"value": "Michelle的绝望III"
+},
+"ui.ending_type.HE": {
+	"value": "希望结局"
+},
+"slot.f_slot_2.name": {
+	"value": "命运"
+},
+"event.exercise.name": {
+	"value": "锻炼"
+},
+"aspect.medicine.name": {
+	"value": "药品"
+},
+"slot.f_slot_14.name": {
+	"value": "命运"
+},
+"event.carmen_lecture_1.name": {
+	"value": "演讲"
+},
+"ui.aspects": {
+	"value": "词条"
+},
+"event.find_Person_II.name": {
+	"value": "招人"
+},
+"aspect.money.name": {
+	"value": "钱财"
+},
+"element.fitness_learnt.name": {
+	"value": "活力:学有所成"
+},
+"element.hope.name": {
+	"value": "希望"
+},
+"slot.out.desc": {
+	"value": "外出，搞钱或是...?"
+},
+"element.power.name": {
+	"value": "手无缚鸡之力"
+},
+"element.carmen_lecture_flyer.name": {
+	"value": "Carmen的传单"
+},
+"event.askformoney.name": {
+	"value": "拉赞助"
+},
+"ui.accepts_any": {
+	"value": "可以放入任何牌。"
+},
+"aspect.evacuation.name": {
+	"value": "撤离"
+},
+"slot.f_slot_4.name": {
+	"value": "命运"
+},
+"slot.f_slot_12.name": {
+	"value": "命运"
+},
+"aspect.readiness.name": {
+	"value": "战备"
+},
+"element.reason.name": {
+	"value": "理性"
+},
+"ui.ending_type.GE": {
+	"value": "好结局"
+},
+"event.fixerWork.name": {
+	"value": "收尾人工作"
+},
+"element.music_betweentwoworld_2.name": {
+	"value": "曲调：两世之间II"
+},
+"aspect.ability.name": {
+	"value": "能力"
+},
+"slot.enhance.desc": {
+	"value": "我变强了?真的假的?"
+},
+"element.inspiration_learnt.name": {
+	"value": "灵感：学有所成"
+},
+"element.passion.name": {
+	"value": "激情"
+},
+"event.exercise_2.name": {
+	"value": "气血涌动"
+},
+"ending.poverty.name": {
+	"value": "资金匮乏"
+},
+"aspect.despair.name": {
+	"value": "绝望"
+},
+"slot.recover_slot.name": {
+	"value": "药品"
+},
+"slot.f_slot_10.name": {
+	"value": "命运"
+},
+"event.prepare_defense.name": {
+	"value": "备战"
+},
+"event.time_A.name": {
+	"value": "Michelle的绝望I"
+},
+"aspect.human.name": {
+	"value": "人类"
+},
+"slot.f_slot_1.name": {
+	"value": "命运"
+},
+"element.music_araya.name": {
+	"value": "曲调：回忆·阿赖耶"
+},
+"slot.time_slot_B.name": {
+	"value": "绝望或希望"
+},
+"aspect.body.name": {
+	"value": "身体"
+},
+"event.time_F.name": {
+	"value": "告发"
+},
+"ui.use_hint": {
+	"value": "双击使用。"
+},
+"slot.work.name": {
+	"value": "工作"
+},
+"ui.ending_type.BE": {
+	"value": "坏结局"
+},
+"slot.work.desc": {
+	"value": "赚取钱财和希望。"
+},
+"ending.poverty.desc": {
+	"value": "由于资金的匮乏，导致你无法维持研究所的研究。"
+},
+"element.ex_reason.name": {
+	"value": "枯竭的理性"
+},
+"slot.f_slot_5.name": {
+	"value": "命运"
+},
+"element.daniel.name": {
+	"value": "Daniel"
+},
+"element.readiness.name": {
+	"value": "战备"
+},
+"slot.prepare.desc": {
+	"value": "消耗1钱财，准备1战备和1撤离。"
+},
+"scenario.ayin_insitute.name": {
+	"value": "Ayin：研究所"
+},
+"slot.health_learnt_1_slot.name": {
+	"value": "活力:学有所成"
+},
+"slot.communication.desc": {
+	"value": "和人们交谈...或者拉赞助？"
+},
+"ui.paused": {
+	"value": "已暂停(空格继续)"
+},
+"slot.p_slot_1.name": {
+	"value": "投入"
+},
+"element.music_betweentwoworld_1.name": {
+	"value": "曲调：两世之间I"
+},
+"ui.choose_scenario": {
+	"value": "选择开局"
+},
+"scenario.ayin_insitute.desc": {
+	"value": "研究所，启动！！！"
+},
+"element.power_3.name": {
+	"value": "有点力气"
+},
+"slot.communication.name": {
+	"value": "交流"
+},
+"aspect.fixer.name": {
+	"value": "收尾人"
+},
+"element.ex_health.name": {
+	"value": "疲惫的健康"
+},
+"element.kali_2.name": {
+	"value": "Kali"
+},
+"ui.log": {
+	"value": "记录"
+},
+"slot.prepare.name": {
+	"value": "部署"
+},
+"slot.illness_slot.name": {
+	"value": "生病"
+},
+"aspect.mind.name": {
+	"value": "理性"
+},
+"element.carmen.name": {
+	"value": "Carmen"
+},
+"element.fitness.name": {
+	"value": "活力"
+},
+"aspect.music.name": {
+	"value": "音乐"
+},
+"slot.f_slot_13.name": {
+	"value": "命运"
+},
+"slot.f_slot_16.name": {
+	"value": "命运"
+},
+"element.music_childrenofcity.name": {
+	"value": "曲调：都市之子"
+},
+"scenario.ayin.desc": {
+	"value": "旧研究所的覆灭前夕。面对无尽的绝望循环，你必须做出安排。(AI制作)"
+},
+"event.find_Person.name": {
+	"value": "招人"
+},
+"scenario.ayin.name": {
+	"value": "Ayin：终点"
+},
+"event.strongRecover.name": {
+	"value": "试图治愈"
+},
+"aspect.wealthy.name": {
+	"value": "?!富富?!"
+},
+"event.delta.name": {
+	"value": "实验"
+},
+"slot.time_slot_E.name": {
+	"value": "绝望或希望"
+},
+"ui.ending_type.TE": {
+	"value": "真结局"
+},
+"element.health.name": {
+	"value": "健康"
+},
+"element.kali.name": {
+	"value": "Kali"
+},
+"event.delta.desc": {
+	"value": "我们这样做，真的是对的么？"
+},
+"slot.f_slot_9.name": {
+	"value": "命运"
+},
+"element.evidence.name": {
+	"value": "证据"
+},
+"aspect.invitation.name": {
+	"value": "邀请"
+},
+"slot.f_slot_18.name": {
+	"value": "命运"
+},
+"element.supermedicine.name": {
+	"value": "万灵药"
+},
+"element.inspiration.name": {
+	"value": "灵感"
+},
+"slot.time_slot_D.name": {
+	"value": "绝望或希望"
+},
+"slot.f_slot_8.name": {
+	"value": "命运"
+},
+"event.first_work.name": {
+	"value": "即将结束"
+},
+"element.music_saikai.name": {
+	"value": "曲调：SAIKAI"
+},
+"ui.seconds": {
+	"value": "秒"
+},
+"ending.te_underlight.name": {
+	"value": "TE — 于光中"
+},
+"slot.f_slot_17.name": {
+	"value": "命运"
+},
+"slot.time_slot.name": {
+	"value": "经费"
+},
+"element.music_rendezvous.name": {
+	"value": "曲调：Rendezvous"
+},
+"element.carmen_3.name": {
+	"value": "Carmen"
+},
+"ending.te_underlight.desc": {
+	"value": "这是必要的牺牲——A"
+},
+"ending.ge_names.desc": {
+	"value": "勿忘我。"
+},
+"event.health_learnt_1.name": {
+	"value": "活力迸发"
+},
+"ending.he_mirror.desc": {
+	"value": "要是这是真实的就好了..."
+},
+"element.disease_flu.name": {
+	"value": "流感"
+},
+"slot.f_slot_7.name": {
+	"value": "命运"
+},
+"element.carmen_invitation.name": {
+	"value": "最终时刻"
+},
+"aspect.hope.name": {
+	"value": "希望"
+},
+"slot.health_learning_slot.name": {
+	"value": "活力"
+},
+"ending.ge_names.name": {
+	"value": "GE — 余烬里的名字"
+},
+"element.power_2.name": {
+	"value": "稍有几分力气"
+},
+"slot.work_basic_slot.name": {
+	"value": "健康"
+},
+"element.daniel_2.name": {
+	"value": "Daniel"
+},
+"aspect.wisdom.name": {
+	"value": "智慧"
+},
+"slot.time_slot_C.name": {
+	"value": "绝望或希望"
+},
+"event.illness.name": {
+	"value": "疾病肆虐"
+},
+"slot.enhance.name": {
+	"value": "强化"
+},
+"event.study_basic.name": {
+	"value": "思考"
+},
+"element.author.name": {
+	"value": "开发者"
+},
+"element.evacuation.name": {
+	"value": "撤离"
+},
+"element.eye.name": {
+	"value": "眼"
+},
+"element.music_origin.name": {
+	"value": "曲调：初始"
+},
+"aspect.sickness.name": {
+	"value": "疾病"
+},
+"slot.f_slot_6.name": {
+	"value": "命运"
+},
+"slot.f_slot_15.name": {
+	"value": "命运"
+},
+"ui.stack": {
+	"value": "数量"
+},
+"ending.he_mirror.name": {
+	"value": "HE — 镜中"
+},
+"ui.lifetime": {
+	"value": "剩余时间:"
+},
+"event.health_learning.name": {
+	"value": "活力萌发"
+},
+"slot.time_slot_A.name": {
+	"value": "绝望"
+},
+"aspect.cogito.name": {
+	"value": "Cogito适应性"
+},
+"aspect.kind.name": {
+	"value": "善良"
+},
+"event.time_pass_insitute.name": {
+	"value": "时间流逝"
+},
+"slot.f_slot_11.name": {
+	"value": "命运"
+},
+"element.old.name": {
+	"value": "饥饿与衰老"
+},
+"event.enhancement.name": {
+	"value": "我变强了么？真的假的？"
+},
+"aspect.oldness.name": {
+	"value": "衰老"
+},
+"aspect.precious.name": {
+	"value": "珍贵"
+},
+"ui.start": {
+	"value": "开始"
+},
+"aspect.tired.name": {
+	"value": "疲倦"
+},
+"element.ex_passion.name": {
+	"value": "平息的激情"
+},
+"ending.be_cannot_continue.desc": {
+	"value": "Garion杀疯了！"
+},
+"event.exercise_3.name": {
+	"value": "气血涌动"
+},
+"slot.music.name": {
+	"value": "回忆曲调"
+},
+"element.despair.name": {
+	"value": "绝望"
+},
+"ending.be_cannot_continue.name": {
+	"value": "BE — 难以继续"
+},
+"ui.accepts": {
+	"value": "接受"
+},
+"element.carmen_2.name": {
+	"value": "Carmen"
+},
+"event.findMusic.name": {
+	"value": "回忆"
+},
+"event.time_B.name": {
+	"value": "Michelle的绝望II"
+},
+"slot.cost_findPerson.name": {
+	"value": "经费"
+},
+"aspect.fitness.name": {
+	"value": "活力"
+},
+"aspect.evidence.name": {
+	"value": "证据"
+},
+"event.time_E.name": {
+	"value": "Michelle的绝望V"
+}
+}
