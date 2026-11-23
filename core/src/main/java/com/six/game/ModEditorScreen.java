@@ -16,6 +16,7 @@ import com.six.game.core.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 public class ModEditorScreen implements Screen {
     private final Stage stage = new Stage(new FitViewport(1280, 720));
@@ -767,12 +768,15 @@ public class ModEditorScreen implements Screen {
         Table successBox = new Table(); successBox.setName("successBox"); successBox.padLeft(20);
         Table failBox = new Table(); failBox.setName("failBox"); failBox.padLeft(20);
 
-        // 👈 修复：使用数组包装 existing 以满足 effectively final 要求
+        // 用数组包装 existing:保持 effectively final,同时允许在类型切换时判断
         final Action[] currentExistingRef = new Action[] { existing };
 
         Runnable updateParams = () -> {
             params.clear();
             String tName = typeBox.getSelected();
+            // 只有"已有动作的类型 = 当前选中的类型"时,才用它来预填界面
+            Action ex = matchesType(currentExistingRef[0], tName) ? currentExistingRef[0] : null;
+
             if (tName.equals("create")) {
                 TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("卡牌ID", "Card ID")); params.add(f).width(120);
                 TextField a = new TextField("1", ui.textFieldStyle()); a.setName("amount"); params.add(a).width(60);
@@ -782,7 +786,9 @@ public class ModEditorScreen implements Screen {
             } else if (tName.equals("chance")) {
                 TextField f = new TextField("50", ui.textFieldStyle()); f.setName("percent"); params.add(f).width(60);
             } else if (tName.equals("check")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("aspects"); f.setMessageText(t("词条组", "Aspects")); params.add(f).width(200);
+                // 词条组:[词条][数量] 一行一个,下面有 [+ 词条] 按钮继续添加
+                Map<String, Integer> exAspects = ex instanceof Actions.Check ? ((Actions.Check) ex).aspects : null;
+                params.add(createAspectGroupBox("aspects", exAspects)).left();
             } else if (tName.equals("trigger")) {
                 TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("事件ID", "Event ID")); params.add(f).width(200);
             } else if (tName.equals("end_game")) {
@@ -792,37 +798,35 @@ public class ModEditorScreen implements Screen {
             } else if (tName.equals("play_music")) {
                 TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("路径", "Path")); params.add(f).width(200);
             } else if (tName.equals("modify_aspects")) {
-                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("卡牌ID", "Card ID")); params.add(f).width(120);
-                TextField f2 = new TextField("", ui.textFieldStyle()); f2.setName("aspects"); f2.setMessageText(t("词条组", "Aspects")); params.add(f2).width(200);
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("卡牌ID", "Card ID")); params.add(f).width(120).top().padRight(8);
+                Map<String, Integer> exAspects = ex instanceof Actions.ModifyAspects ? ((Actions.ModifyAspects) ex).aspects : null;
+                params.add(createAspectGroupBox("aspects", exAspects)).left();
             } else if (tName.equals("random_create") || tName.equals("random_trigger") || tName.equals("random_do")) {
-                // 👈 核心修复 2：从单行文本框改成了可视化动态行！
                 Table optsBox = new Table();
                 optsBox.setName("optsBox");
 
-                if (currentExistingRef[0] instanceof Actions.RandomCreate) {
-                    for (Actions.RandomCreate.Option o : ((Actions.RandomCreate) currentExistingRef[0]).options) addRandomRow(optsBox, tName, o.target, o.target, String.valueOf(o.weight), null);
-                } else if (currentExistingRef[0] instanceof Actions.RandomTrigger) {
-                    for (Actions.RandomTrigger.Option o : ((Actions.RandomTrigger) currentExistingRef[0]).options) addRandomRow(optsBox, tName, o.event, o.event, String.valueOf(o.weight), null);
-                } else if (currentExistingRef[0] instanceof Actions.RandomDo) {
-                    for (Actions.RandomDo.Option o : ((Actions.RandomDo) currentExistingRef[0]).options) addRandomRow(optsBox, tName, "", "", String.valueOf(o.weight), o.action);
+                if (ex instanceof Actions.RandomCreate) {
+                    for (Actions.RandomCreate.Option o : ((Actions.RandomCreate) ex).options) addRandomRow(optsBox, tName, o.target, o.target, String.valueOf(o.weight), null);
+                } else if (ex instanceof Actions.RandomTrigger) {
+                    for (Actions.RandomTrigger.Option o : ((Actions.RandomTrigger) ex).options) addRandomRow(optsBox, tName, o.event, o.event, String.valueOf(o.weight), null);
+                } else if (ex instanceof Actions.RandomDo) {
+                    for (Actions.RandomDo.Option o : ((Actions.RandomDo) ex).options) addRandomRow(optsBox, tName, "", "", String.valueOf(o.weight), o.action);
                 }
 
-                // 如果导入的没数据，默认给一个空行
+                // 没有数据时,默认给一个空行
                 if (optsBox.getChildren().isEmpty()) addRandomRow(optsBox, tName, "", "", "1", null);
 
                 TextButton addOpt = createActionBtn(t("+ 添加项", "+ Add Option"), () -> addRandomRow(optsBox, tName, "", "", "1", null));
                 params.add(optsBox).left().row();
                 params.add(addOpt).left().padTop(5);
             }
+
+            // 把已有动作的简单参数(目标、数量、概率……)填回输入框。
+            // 以前这里没有做,打开已有事件再点"保存修改"会把这些参数清空。
+            if (ex != null) fillActionParams(params, ex);
         };
 
-        typeBox.addListener(new ChangeListener() { public void changed(ChangeEvent e, Actor a) {
-            // 修复：使用 currentExistingRef[0] 判断并重置
-            if (typeBox.getSelected().startsWith("random_") && !(currentExistingRef[0] instanceof Actions.RandomCreate || currentExistingRef[0] instanceof Actions.RandomTrigger || currentExistingRef[0] instanceof Actions.RandomDo)) {
-                currentExistingRef[0] = null;
-            }
-            updateParams.run();
-        } });
+        typeBox.addListener(new ChangeListener() { public void changed(ChangeEvent e, Actor a) { updateParams.run(); } });
 
         Table buttons = new Table();
         buttons.add(new Label(t("成功:", "Success:"), ui.labelStyle(Color.GREEN)));
@@ -853,8 +857,12 @@ public class ModEditorScreen implements Screen {
             else if (currentExistingRef[0] instanceof Actions.RandomTrigger) typeBox.setSelected("random_trigger");
             else if (currentExistingRef[0] instanceof Actions.RandomDo) typeBox.setSelected("random_do");
             updateParams.run();
+            // 把已有动作的成功/失败分支重建回界面(以前只选中类型,分支在保存时会丢)
+            for (Action child : currentExistingRef[0].onSuccess) addActionBlock(successBox, child);
+            for (Action child : currentExistingRef[0].onFail) addActionBlock(failBox, child);
         } else {
             typeBox.setSelected("create");
+            updateParams.run();   // 新建的块:确保一定有输入框(不依赖 setSelected 是否触发了事件)
         }
     }
 
@@ -873,13 +881,125 @@ public class ModEditorScreen implements Screen {
             TextField wF = new TextField(weight, ui.textFieldStyle()); wF.setName("weight"); wF.setMessageText(t("权重", "Weight")); row.add(wF).width(80).padRight(5);
             Table actContainer = new Table();
             actContainer.setName("actContainer");
-            if (nestedAction != null) addActionBlock(actContainer, nestedAction);
+            // 以前只有"导入已有数据"时才有动作块,新建的选项里是空的、也没有任何按钮,所以没法填事件。
+            // 现在每个选项一定带一个动作块(默认类型 create),可以在下拉框里改成 trigger 等并填写。
+            addActionBlock(actContainer, nestedAction);
             row.add(actContainer).padRight(5);
         }
 
         TextButton delBtn = createActionBtn("-", row::remove);
         row.add(delBtn).size(30, 30).top();
         box.add(row).left().row();
+    }
+
+    /** 已有动作的类型是否对应下拉框里的 type 字符串。 */
+    private boolean matchesType(Action a, String type) {
+        if (a == null) return false;
+        switch (type) {
+            case "create": return a instanceof Actions.Create;
+            case "consume": return a instanceof Actions.Consume;
+            case "drain": return a instanceof Actions.Drain;
+            case "check": return a instanceof Actions.Check;
+            case "chance": return a instanceof Actions.Chance;
+            case "trigger": return a instanceof Actions.TriggerEvent;
+            case "end_game": return a instanceof Actions.EndGame;
+            case "unlock_verb": return a instanceof Actions.UnlockVerb;
+            case "play_music": return a instanceof Actions.PlayMusic;
+            case "modify_aspects": return a instanceof Actions.ModifyAspects;
+            case "random_create": return a instanceof Actions.RandomCreate;
+            case "random_trigger": return a instanceof Actions.RandomTrigger;
+            case "random_do": return a instanceof Actions.RandomDo;
+            default: return false;
+        }
+    }
+
+    /** 把已有动作的简单参数填回 updateParams 生成的输入框(词条组和随机选项各自单独处理)。 */
+    private void fillActionParams(Table params, Action act) {
+        if (act instanceof Actions.Create) {
+            Actions.Create x = (Actions.Create) act;
+            setField(params, "target", x.target);
+            setField(params, "amount", String.valueOf(x.amount));
+        } else if (act instanceof Actions.Consume) {
+            Actions.Consume x = (Actions.Consume) act;
+            setField(params, "target", x.target);
+            setField(params, "amount", String.valueOf(x.amount));
+        } else if (act instanceof Actions.Drain) {
+            Actions.Drain x = (Actions.Drain) act;
+            setField(params, "target", x.target);
+            setField(params, "amount", String.valueOf(x.amount));
+        } else if (act instanceof Actions.Chance) {
+            setField(params, "percent", String.valueOf(((Actions.Chance) act).percent));
+        } else if (act instanceof Actions.TriggerEvent) {
+            setField(params, "target", ((Actions.TriggerEvent) act).event);
+        } else if (act instanceof Actions.EndGame) {
+            setField(params, "target", ((Actions.EndGame) act).ending);
+        } else if (act instanceof Actions.UnlockVerb) {
+            setField(params, "target", ((Actions.UnlockVerb) act).verb);
+        } else if (act instanceof Actions.PlayMusic) {
+            setField(params, "target", ((Actions.PlayMusic) act).track);
+        } else if (act instanceof Actions.ModifyAspects) {
+            setField(params, "target", ((Actions.ModifyAspects) act).target);
+        }
+    }
+
+    private void setField(Table params, String name, String text) {
+        Actor f = params.findActor(name);
+        if (f instanceof TextField) ((TextField) f).setText(text == null ? "" : text);
+    }
+
+    // ================= 词条组编辑器:[词条1][数量] [词条2][数量] ... [+ 词条] =================
+
+    /** 创建一个词条组编辑器。名字用于解析时查找;existing 非空时按它预填,否则给一个空行。 */
+    private Table createAspectGroupBox(String name, Map<String, Integer> existing) {
+        Table box = new Table();
+        box.setName(name);
+        box.left().top();
+
+        Table rows = new Table();
+        rows.setName("aspectRows");
+        rows.left();
+        box.add(rows).left().row();
+
+        TextButton addBtn = createActionBtn(t("+ 词条", "+ Aspect"), () -> addAspectGroupRow(rows, "", "1"));
+        box.add(addBtn).left().padTop(3);
+
+        if (existing != null && !existing.isEmpty()) {
+            for (Map.Entry<String, Integer> e : existing.entrySet()) {
+                addAspectGroupRow(rows, e.getKey(), String.valueOf(e.getValue()));
+            }
+        } else {
+            addAspectGroupRow(rows, "", "1");
+        }
+        return box;
+    }
+
+    private void addAspectGroupRow(Table rows, String key, String amt) {
+        Table row = new Table();
+        row.padBottom(3);
+        TextField k = new TextField(key, ui.textFieldStyle()); k.setName("aKey"); k.setMessageText(t("词条", "Aspect")); row.add(k).width(120).padRight(4);
+        TextField a = new TextField(amt, ui.textFieldStyle()); a.setName("aAmt"); a.setMessageText(t("数量", "Amount")); row.add(a).width(55).padRight(4);
+        TextButton del = createActionBtn("-", row::remove);
+        row.add(del).size(28, 28);
+        rows.add(row).left().row();
+    }
+
+    private HashMap<String, Integer> parseAspectGroupBox(Table box) {
+        HashMap<String, Integer> map = new HashMap<>();
+        if (box == null) return map;
+        Table rows = box.findActor("aspectRows");
+        if (rows == null) return map;
+        for (Actor c : rows.getChildren()) {
+            if (c instanceof Table && !(c instanceof Button)) {
+                Table row = (Table) c;
+                Actor k = row.findActor("aKey");
+                Actor a = row.findActor("aAmt");
+                if (k instanceof TextField && a instanceof TextField) {
+                    String key = ((TextField) k).getText().trim();
+                    if (!key.isEmpty()) map.put(key, parseInt(((TextField) a).getText()));
+                }
+            }
+        }
+        return map;
     }
 
     private ArrayList<Action> parseActionTree(Table container) {
@@ -917,7 +1037,7 @@ public class ModEditorScreen implements Screen {
             a = c;
         } else if (type.equals("check")) {
             Actions.Check c = new Actions.Check();
-            c.aspects = parseAspectsString(((TextField) block.findActor("aspects")).getText());
+            c.aspects = parseAspectGroupBox(block.findActor("aspects"));
             a = c;
         } else if (type.equals("trigger")) {
             Actions.TriggerEvent c = new Actions.TriggerEvent();
@@ -938,7 +1058,7 @@ public class ModEditorScreen implements Screen {
         } else if (type.equals("modify_aspects")) {
             Actions.ModifyAspects c = new Actions.ModifyAspects();
             c.target = ((TextField) block.findActor("target")).getText();
-            c.aspects = parseAspectsString(((TextField) block.findActor("aspects")).getText());
+            c.aspects = parseAspectGroupBox(block.findActor("aspects"));
             a = c;
         } else if (type.equals("random_create")) {
             Actions.RandomCreate c = new Actions.RandomCreate();
