@@ -204,18 +204,40 @@ public class ContentLoader {
     @SuppressWarnings("unchecked")
     public ArrayList<ScenarioDef> loadScenarios(String text, Library lib, EventBook events) {
         ArrayList<ScenarioDef> list = json.fromJson(ArrayList.class, ScenarioDef.class, text);
-        Set<String> ids = new HashSet<>();
+
+        // 👇 核心修复：使用 LinkedHashMap 去重，保持原有顺序，且后加载的覆盖先加载的
+        java.util.LinkedHashMap<String, ScenarioDef> map = new java.util.LinkedHashMap<>();
+
         for (ScenarioDef s : list) {
-            if (s.id == null || s.id.isEmpty()) throw new IllegalStateException("有开局缺少 id");
-            if (!ids.add(s.id)) System.out.println("[警告] 模组覆盖了已存在的开局 id: " + s.id);
-            for (EventDef.Product p : s.cards) if (p.card == null || !lib.has(p.card)) throw new IllegalStateException("开局 " + s.id + " 发了未知卡牌: " + p.card);
-            for (String v : s.verbs) if (!lib.hasVerb(v)) throw new IllegalStateException("开局 " + s.id + " 引用了未知行动: " + v);
+            if (s.id == null || s.id.isEmpty()) {
+                throw new IllegalStateException("有开局缺少 id");
+            }
+            if (map.containsKey(s.id)) {
+                System.out.println("[警告] 模组覆盖了已存在的开局 id: " + s.id);
+            }
+
+            for (EventDef.Product p : s.cards) {
+                if (p.card == null || !lib.has(p.card)) {
+                    throw new IllegalStateException("开局 " + s.id + " 发了未知卡牌: " + p.card);
+                }
+            }
+            for (String v : s.verbs) {
+                if (!lib.hasVerb(v)) {
+                    throw new IllegalStateException("开局 " + s.id + " 引用了未知行动: " + v);
+                }
+            }
             for (String e : s.autoEvents) {
                 EventDef ev = events.get(e);
-                if (ev == null || !"auto".equals(ev.start)) throw new IllegalStateException("开局 " + s.id + " 的 autoEvents 必须是 auto 事件: " + e);
+                if (ev == null || !"auto".equals(ev.start)) {
+                    throw new IllegalStateException("开局 " + s.id + " 的 autoEvents 必须是 auto 事件: " + e);
+                }
             }
+
+            map.put(s.id, s);
         }
-        return list;
+
+        // 最后把去重后的数据转成 List 返回
+        return new ArrayList<>(map.values());
     }
 
     @SuppressWarnings("unchecked")
