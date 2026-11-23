@@ -25,12 +25,24 @@ public class StartScreen implements Screen {
 
         root.add(new Label(ui.texts.get("ui.title"), ui.labelStyle(Color.GOLD))).padBottom(40).row();
 
-        // 读取存档按钮
-        if (Gdx.files.local("save_1.json").exists() || Gdx.files.local("save_2.json").exists()) {
-            TextButton loadBtn = new TextButton("读取存档", ui.buttonStyle());
+        // 👇 核心修复：检查 saves 文件夹里是否有任何一个 slot_X.json
+        com.badlogic.gdx.files.FileHandle saveDir = Gdx.files.local("saves");
+        boolean hasAnySave = false;
+        if (saveDir.exists() && saveDir.isDirectory()) {
+            for (com.badlogic.gdx.files.FileHandle file : saveDir.list()) {
+                if (file.name().startsWith("slot_") && file.name().endsWith(".json")) {
+                    hasAnySave = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasAnySave) {
+            TextButton loadBtn = new TextButton(ui.texts.get("ui.load_game", "读取游戏"), ui.buttonStyle());
             loadBtn.addListener(new ChangeListener() {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
+                    // 跳转到读档界面
                     onLoadGame.run();
                 }
             });

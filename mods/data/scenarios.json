@@ -1,0 +1,31 @@
+[
+{
+	"type": "com.six.game.core.ScenarioDef",
+	"id": "ayin",
+	"cards": [
+		{
+			"card": "carmen_invitation"
+		},
+		{
+			"card": "despair"
+		}
+	],
+	"verbs": [
+		"work",
+		"study",
+		"prepare"
+	]
+},
+{
+	"type": "com.six.game.core.ScenarioDef",
+	"id": "ayin_insitute",
+	"cards": [
+		{
+			"card": "carmen_lecture_flyer"
+		}
+	],
+	"verbs": [
+		"out"
+	]
+}
+]

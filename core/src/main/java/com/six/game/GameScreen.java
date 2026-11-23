@@ -223,25 +223,26 @@ public class GameScreen implements Screen {
         window.add(loadBtn).width(250).height(50).padBottom(10).row();
 
         Table volRow = new Table();
-        volumeLabel = new Label("音量: " + (int)(AudioManager.getInstance().getVolume()*100) + "%", ui.labelStyle(Color.WHITE));
-        volRow.add(volumeLabel).width(150);
-        TextButton volDown = new TextButton("-", ui.buttonStyle());
-        TextButton volUp = new TextButton("+", ui.buttonStyle());
+        // 创建一个实时显示当前音量的 Label
+        volumeLabel = new Label("音量: " + (int)(AudioManager.getInstance().getVolume() * 100) + "%", ui.labelStyle(Color.WHITE));
+        volRow.add(volumeLabel).width(80).left().padRight(10);
 
-        volDown.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent e, Actor a) {
-                AudioManager.getInstance().setVolume(AudioManager.getInstance().getVolume() - 0.1f);
-                volumeLabel.setText("音量: " + (int)(AudioManager.getInstance().getVolume()*100) + "%");
+        // 创建 Slider：最小值0，最大值1，步长0.01
+        Slider volSlider = new Slider(0f, 1f, 0.01f, false, ui.sliderStyle());
+        volSlider.setValue(AudioManager.getInstance().getVolume()); // 初始值设为当前音量
+
+        // 监听拖动事件
+        volSlider.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                float val = volSlider.getValue();
+                AudioManager.getInstance().setVolume(val);
+                volumeLabel.setText("音量: " + (int)(val * 100) + "%");
             }
         });
-        volUp.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent e, Actor a) {
-                AudioManager.getInstance().setVolume(AudioManager.getInstance().getVolume() + 0.1f);
-                volumeLabel.setText("音量: " + (int)(AudioManager.getInstance().getVolume()*100) + "%");
-            }
-        });
-        volRow.add(volDown).size(40).padLeft(10);
-        volRow.add(volUp).size(40).padLeft(5);
+
+        volRow.add(volSlider).width(150).height(30);
+
         window.add(volRow).padBottom(20).row();
 
         TextButton menuBtn = new TextButton("保存并回到主菜单", ui.buttonStyle());

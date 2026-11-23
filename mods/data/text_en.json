@@ -1,0 +1,338 @@
+{
+"slot.f_slot_3.name": {
+	"value": "Fate"
+},
+"slot.out.name": {
+	"value": "Get Out"
+},
+"event.time_D.name": {
+	"value": "Michelle's Despair"
+},
+"ui.seed_hint": {
+	"value": "Place a card to begin."
+},
+"event.work_basic.name": {
+	"value": "Work"
+},
+"ui.title": {
+	"value": "The Institute"
+},
+"ui.remaining": {
+	"value": "Remaining"
+},
+"slot.study.desc": {
+	"value": "Steady your mind."
+},
+"slot.study.name": {
+	"value": "Study"
+},
+"event.time_C.name": {
+	"value": "Michelle's Despair"
+},
+"ui.ending_type.HE": {
+	"value": "Hope Ending"
+},
+"slot.f_slot_2.name": {
+	"value": "Fate"
+},
+"slot.f_slot_14.name": {
+	"value": "Fate"
+},
+"event.carmen_lecture_1.name": {
+	"value": "The Lecture"
+},
+"ui.aspects": {
+	"value": "Aspects"
+},
+"aspect.money.name": {
+	"value": "Funds"
+},
+"element.hope.name": {
+	"value": "Hope"
+},
+"slot.out.desc": {
+	"value": "Get out, gain money or ...?"
+},
+"ui.accepts_any": {
+	"value": "Any card."
+},
+"aspect.evacuation.name": {
+	"value": "Evacuation"
+},
+"slot.f_slot_4.name": {
+	"value": "Fate"
+},
+"slot.f_slot_12.name": {
+	"value": "Fate"
+},
+"aspect.readiness.name": {
+	"value": "Readiness"
+},
+"element.reason.name": {
+	"value": "Reason"
+},
+"ui.ending_type.GE": {
+	"value": "Good Ending"
+},
+"element.passion.name": {
+	"value": "Passion"
+},
+"ending.poverty.name": {
+	"value": "Insolvency"
+},
+"aspect.despair.name": {
+	"value": "Despair"
+},
+"slot.recover_slot.name": {
+	"value": "Medicine"
+},
+"slot.f_slot_10.name": {
+	"value": "Fate"
+},
+"event.prepare_defense.name": {
+	"value": "Preparation"
+},
+"event.time_A.name": {
+	"value": "Michelle's Despair"
+},
+"aspect.human.name": {
+	"value": "Humanity"
+},
+"slot.f_slot_1.name": {
+	"value": "Fate"
+},
+"slot.time_slot_B.name": {
+	"value": "Michelle's Despair"
+},
+"aspect.body.name": {
+	"value": "Body"
+},
+"event.time_F.name": {
+	"value": "Whistleblowing"
+},
+"ui.use_hint": {
+	"value": "Double-click to use."
+},
+"slot.work.name": {
+	"value": "Work"
+},
+"ui.ending_type.BE": {
+	"value": "Bad Ending"
+},
+"slot.work.desc": {
+	"value": "Earn funds and hope."
+},
+"ending.poverty.desc": {
+	"value": "The research cannot be sustained due to a lack of funds."
+},
+"element.ex_reason.name": {
+	"value": "Exhausted Reason"
+},
+"slot.f_slot_5.name": {
+	"value": "Fate"
+},
+"element.readiness.name": {
+	"value": "Readiness"
+},
+"slot.prepare.desc": {
+	"value": "Consume 1 Fund to prepare 1 Readiness and 1 Evacuation."
+},
+"scenario.ayin_insitute.name": {
+	"value": "Ayin: Insitute"
+},
+"ui.paused": {
+	"value": "Paused (Space to resume)"
+},
+"slot.p_slot_1.name": {
+	"value": "Input"
+},
+"ui.choose_scenario": {
+	"value": "Choose a Scenario"
+},
+"scenario.ayin_insitute.desc": {
+	"value": "Insitute, START!!!"
+},
+"element.ex_health.name": {
+	"value": "Exhausted Health"
+},
+"ui.log": {
+	"value": "Chronicle"
+},
+"slot.prepare.name": {
+	"value": "Prepare"
+},
+"slot.illness_slot.name": {
+	"value": "Ill"
+},
+"aspect.mind.name": {
+	"value": "Reason"
+},
+"slot.f_slot_13.name": {
+	"value": "Fate"
+},
+"slot.f_slot_16.name": {
+	"value": "Fate"
+},
+"scenario.ayin.desc": {
+	"value": "The eve of the old lab's fall. Face the endless cycle of despair and make your arrangements."
+},
+"scenario.ayin.name": {
+	"value": "Ayin: Michelle's Despair"
+},
+"event.strongRecover.name": {
+	"value": "Try to cure"
+},
+"event.delta.name": {
+	"value": "Time Passes (Despair)"
+},
+"slot.time_slot_E.name": {
+	"value": "Michelle's Despair"
+},
+"ui.ending_type.TE": {
+	"value": "True Ending"
+},
+"element.health.name": {
+	"value": "Health"
+},
+"event.delta.desc": {
+	"value": "The air grows heavy. Fear manifests from nothing."
+},
+"slot.f_slot_9.name": {
+	"value": "Fate"
+},
+"element.evidence.name": {
+	"value": "Evidence"
+},
+"aspect.invitation.name": {
+	"value": "Invitation"
+},
+"slot.f_slot_18.name": {
+	"value": "Fate"
+},
+"element.supermedicine.name": {
+	"value": "SuperMedicine"
+},
+"slot.time_slot_D.name": {
+	"value": "Michelle's Despair"
+},
+"slot.f_slot_8.name": {
+	"value": "Fate"
+},
+"event.first_work.name": {
+	"value": "About to End"
+},
+"ui.seconds": {
+	"value": "s"
+},
+"ending.te_underlight.name": {
+	"value": "TE — In the Light"
+},
+"slot.f_slot_17.name": {
+	"value": "Fate"
+},
+"slot.time_slot.name": {
+	"value": "Cost"
+},
+"ending.te_underlight.desc": {
+	"value": "This is the necessary sacrifice — A."
+},
+"ending.ge_names.desc": {
+	"value": "Forget me not."
+},
+"ending.he_mirror.desc": {
+	"value": "If only this were real..."
+},
+"element.disease_flu.name": {
+	"value": "Chill"
+},
+"slot.f_slot_7.name": {
+	"value": "Fate"
+},
+"element.carmen_invitation.name": {
+	"value": "The Final Moment"
+},
+"aspect.hope.name": {
+	"value": "Hope"
+},
+"ending.ge_names.name": {
+	"value": "GE — Names in Embers"
+},
+"slot.time_slot_C.name": {
+	"value": "Michelle's Despair"
+},
+"event.illness.name": {
+	"value": "Illness Spread"
+},
+"event.study_basic.name": {
+	"value": "Study"
+},
+"element.evacuation.name": {
+	"value": "Evacuation"
+},
+"element.eye.name": {
+	"value": "Eyes"
+},
+"aspect.sickness.name": {
+	"value": "Sickness"
+},
+"slot.f_slot_6.name": {
+	"value": "Fate"
+},
+"slot.f_slot_15.name": {
+	"value": "Fate"
+},
+"ui.stack": {
+	"value": "Count"
+},
+"ending.he_mirror.name": {
+	"value": "HE — In the Mirror"
+},
+"ui.lifetime": {
+	"value": "Lifetime"
+},
+"slot.time_slot_A.name": {
+	"value": "Michelle's Despair"
+},
+"aspect.cogito.name": {
+	"value": "Cogito Adaptability"
+},
+"event.time_pass_insitute.name": {
+	"value": "Time Pass"
+},
+"slot.f_slot_11.name": {
+	"value": "Fate"
+},
+"element.old.name": {
+	"value": "Hunger and Old"
+},
+"ui.start": {
+	"value": "Start"
+},
+"aspect.tired.name": {
+	"value": "Tireness"
+},
+"element.ex_passion.name": {
+	"value": "Exhausted Passion"
+},
+"ending.be_cannot_continue.desc": {
+	"value": "Garion went on a rampage!"
+},
+"element.despair.name": {
+	"value": "Despair"
+},
+"ending.be_cannot_continue.name": {
+	"value": "BE — Cannot Continue"
+},
+"ui.accepts": {
+	"value": "Accepts"
+},
+"event.time_B.name": {
+	"value": "Michelle's Despair"
+},
+"aspect.evidence.name": {
+	"value": "Evidence"
+},
+"event.time_E.name": {
+	"value": "Michelle's Despair"
+}
+}

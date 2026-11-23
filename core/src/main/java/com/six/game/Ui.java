@@ -144,6 +144,20 @@ public class Ui implements Disposable {
         return s;
     }
 
+    public Slider.SliderStyle sliderStyle() {
+        Slider.SliderStyle style = new Slider.SliderStyle();
+        // 滑块底槽：深色背景
+        style.background = rect(new Color(0.1f, 0.12f, 0.16f, 1f));
+        style.background.setMinHeight(8f); // 让槽稍微粗一点
+        // 滑块手柄：金色或亮色
+        style.knob = rect(new Color(0.62f, 0.45f, 0.20f, 1f));
+        style.knob.setMinWidth(16f);
+        style.knob.setMinHeight(24f);
+        style.knobBefore = rect(new Color(0.62f, 0.45f, 0.20f, 1f));
+        style.knobBefore.setMinHeight(8f);
+        return style;
+    }
+
     public TextField.TextFieldStyle textFieldStyle() {
         TextField.TextFieldStyle style = new TextField.TextFieldStyle();
         style.font = font;

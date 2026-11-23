@@ -1,0 +1,552 @@
+[
+{
+	"type": "com.six.game.core.Element",
+	"id": "carmen_invitation",
+	"aspects": {
+		"invitation": 1
+	},
+	"triggers": [
+		{
+			"slot": "work",
+			"event": "first_work"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "carmen_lecture_flyer",
+	"image": "img/cards/carmen.png",
+	"aspects": {
+		"invitation": 1
+	},
+	"triggers": [
+		{
+			"slot": "out",
+			"event": "carmen_lecture_1"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "eye",
+	"image": "img/cards/money.png",
+	"aspects": {
+		"money": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "prepare",
+			"event": "prepare_defense"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "health",
+	"image": "img/cards/health.png",
+	"aspects": {
+		"body": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "enhance",
+			"event": "exercise"
+		},
+		{
+			"slot": "music",
+			"event": "findMusic"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "ex_health",
+	"image": "img/cards/health.png",
+	"aspects": {
+		"tired": 1
+	},
+	"lifetime": 60,
+	"decayTo": "health"
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "fitness",
+	"image": "img/cards/fitness.png",
+	"aspects": {
+		"fitness": 1
+	},
+	"lifetime": 240,
+	"triggers": [
+		{
+			"slot": "enhance",
+			"event": "health_learning"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "fitness_learnt",
+	"image": "img/cards/fitness_learnt.png",
+	"aspects": {
+		"fitness": 4
+	},
+	"lifetime": 360
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "power",
+	"aspects": {
+		"ability": 1
+	},
+	"triggers": [
+		{
+			"slot": "work",
+			"event": "work_basic"
+		},
+		{
+			"slot": "enhance",
+			"event": "health_learnt_1"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "power_2",
+	"aspects": {
+		"ability": 2
+	},
+	"triggers": [
+		{
+			"slot": "work",
+			"event": "work_basic_2"
+		},
+		{
+			"slot": "enhance",
+			"event": "health_learnt_2"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "power_3",
+	"aspects": {
+		"ability": 3
+	},
+	"triggers": [
+		{
+			"slot": "work",
+			"event": "work_basic_3"
+		},
+		{
+			"slot": "enhance",
+			"event": "health_learnt_3"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "reason",
+	"image": "img/cards/reason.png",
+	"aspects": {
+		"mind": 1,
+		"wisdom": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "study",
+			"event": "study_basic"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "ex_reason",
+	"image": "img/cards/reason.png",
+	"aspects": {
+		"tired": 1
+	},
+	"lifetime": 60,
+	"decayTo": "reason"
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "passion",
+	"image": "img/cards/passion.png",
+	"aspects": {
+		"spirit": 1
+	},
+	"stackable": true
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "ex_passion",
+	"image": "img/cards/passion.png",
+	"aspects": {
+		"tired": 1
+	},
+	"lifetime": 60,
+	"decayTo": "passion"
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "inspiration",
+	"image": "img/cards/inspiration.png",
+	"aspects": {
+		"inspire": 1
+	},
+	"lifetime": 240
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "inspiration_learnt",
+	"image": "img/cards/inspiration_learnt.png",
+	"aspects": {
+		"inspire": 2
+	},
+	"lifetime": 360
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "hope",
+	"aspects": {
+		"hope": 1
+	},
+	"stackable": true
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "despair",
+	"aspects": {
+		"despair": 1
+	},
+	"stackable": true
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "readiness",
+	"aspects": {
+		"readiness": 1
+	},
+	"stackable": true
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "evacuation",
+	"aspects": {
+		"evacuation": 1
+	},
+	"stackable": true
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "evidence",
+	"aspects": {
+		"evidence": 1
+	},
+	"stackable": true
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "disease_flu",
+	"aspects": {
+		"sickness": 1
+	},
+	"lifetime": 120,
+	"decayTo": "old"
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "old",
+	"aspects": {
+		"oldness": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "work",
+			"event": "strongRecover"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "supermedicine",
+	"aspects": {
+		"precious": 1,
+		"medicine": 2
+	},
+	"stackable": true
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "carmen",
+	"image": "img/cards/carmen.png",
+	"aspects": {
+		"cogito": 100,
+		"human": 1
+	},
+	"triggers": [
+		{
+			"slot": "out",
+			"event": "find_Person"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "carmen_2",
+	"image": "img/cards/carmen.png",
+	"aspects": {
+		"cogito": 100,
+		"human": 1
+	},
+	"triggers": [
+		{
+			"slot": "out",
+			"event": "find_Person_II"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "carmen_3",
+	"image": "img/cards/carmen.png",
+	"aspects": {
+		"cogito": 100,
+		"human": 1
+	}
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "daniel",
+	"image": "img/cards/daniel.png",
+	"aspects": {
+		"wealthy": 1,
+		"human": 1
+	},
+	"triggers": [
+		{
+			"slot": "communication",
+			"event": "askformoney"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "daniel_2",
+	"image": "img/cards/daniel.png",
+	"aspects": {
+		"human": 1
+	},
+	"lifetime": 120,
+	"decayTo": "daniel"
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "kali",
+	"image": "img/cards/kali.png",
+	"aspects": {
+		"fixer": 5,
+		"human": 1
+	},
+	"triggers": [
+		{
+			"slot": "out",
+			"event": "fixerWork"
+		},
+		{
+			"slot": "enhance",
+			"event": "enhancement"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "kali_2",
+	"image": "img/cards/kali.png",
+	"aspects": {
+		"fixer": 6,
+		"human": 1
+	}
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "author",
+	"aspects": {
+		"tired": 999,
+		"human": -1
+	},
+	"lifetime": 325,
+	"decayTo": "carmen_lecture_flyer"
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "benjamin",
+	"aspects": {
+		"human": 1,
+		"wisdom": 2
+	}
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "elijah",
+	"aspects": {
+		"human": 1
+	}
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "gabriel",
+	"aspects": {
+		"human": 1,
+		"wisdom": 1
+	}
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "michelle",
+	"aspects": {
+		"kind": 1,
+		"human": 1
+	}
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "giovanni",
+	"aspects": {
+		"human": 1,
+		"wisdom": 2
+	},
+	"lifetime": 60,
+	"decayTo": "giovanni_2"
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "giovanni_2",
+	"aspects": {
+		"tired": 2,
+		"human": 1
+	},
+	"lifetime": 120,
+	"decayTo": "giovanni"
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "lisa",
+	"aspects": {
+		"human": 1
+	}
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "enoch",
+	"aspects": {
+		"cogito": 40,
+		"human": 1
+	}
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "music_origin",
+	"aspects": {
+		"music": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "music",
+			"event": "music_origin"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "music_saikai",
+	"aspects": {
+		"music": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "music",
+			"event": "music_saikai"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "music_childrenofcity",
+	"aspects": {
+		"music": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "music",
+			"event": "music_childrenofcity"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "music_araya",
+	"aspects": {
+		"music": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "music",
+			"event": "music_araya"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "music_betweentwoworld_1",
+	"image": "img/cards/betweentwoworlds_1.png",
+	"aspects": {
+		"music": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "music",
+			"event": "music_betweentwoworld_1"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "music_betweentwoworld_2",
+	"image": "img/cards/betweentwoworlds_2.png",
+	"aspects": {
+		"music": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "music",
+			"event": "music_betweentwoworld_2"
+		}
+	]
+},
+{
+	"type": "com.six.game.core.Element",
+	"id": "music_rendezvous",
+	"image": "img/cards/rendezvous.png",
+	"aspects": {
+		"music": 1
+	},
+	"stackable": true,
+	"triggers": [
+		{
+			"slot": "music",
+			"event": "music_rendezvous"
+		}
+	]
+}
+]
