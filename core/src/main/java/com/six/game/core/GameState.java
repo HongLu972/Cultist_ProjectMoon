@@ -149,6 +149,13 @@ public class GameState {
 
         // 2. 恢复窗口（彻底剥离自动启动逻辑）
         for (SaveData.SituationData sd : data.situations) {
+            // 旧存档兼容：历史拼写错误 insitute 统一映射为 institute
+            sd.situationId = fixLegacyId(sd.situationId);
+            sd.verbId = fixLegacyId(sd.verbId);
+            sd.eventId = fixLegacyId(sd.eventId);
+            sd.selectedEventId = fixLegacyId(sd.selectedEventId);
+            sd.runningEventId = fixLegacyId(sd.runningEventId);
+
             Situation s = null;
             if (sd.eventId != null && events.has(sd.eventId)) {
                 // 事件窗口：直接用构造函数，避免触发 autoStart
@@ -209,6 +216,12 @@ public class GameState {
     }
 
     // ---------------------------------------------------------------- 窗口与卡牌（保持你原有逻辑）
+
+    /** 旧存档 id 兼容：把历史拼写错误 insitute 映射为 institute（覆盖事件 id/situation id 及其组合键）。 */
+    private static String fixLegacyId(String id) {
+        return (id != null && id.contains("insitute")) ? id.replace("insitute", "institute") : id;
+    }
+
     public Situation unlockVerb(String verbId) {
         int n = 0;
         for (Situation s : situations) {

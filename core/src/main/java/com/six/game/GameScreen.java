@@ -6,6 +6,7 @@ import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
@@ -18,11 +19,13 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.DragAndDrop;
 import com.badlogic.gdx.scenes.scene2d.utils.DragListener;
+import com.badlogic.gdx.utils.Scaling;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.six.game.core.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -32,6 +35,11 @@ public class GameScreen implements Screen {
     private static final String KIND_CARD = "card";
     private static final String KIND_SLOT = "slot";
     private static final String KIND_WINDOW = "window";
+
+    // --- 密教式地图小图标布局参数 ---
+    private static final float TOKEN = 56f;      // 图标边长
+    private static final Color TOKEN_BG = new Color(0.15f, 0.12f, 0.20f, 0.97f);
+    private static final Color TOKEN_BG_HOVER = new Color(0.32f, 0.26f, 0.42f, 1f);
 
     private final Ui ui;
     private final GameState state;
@@ -44,11 +52,14 @@ public class GameScreen implements Screen {
 
     private final Group worldGroup = new Group();
     private final DragAndDrop dnd = new DragAndDrop();
+    private final java.util.HashSet<String> seenIds = new java.util.HashSet<>();
 
     private final InfoPanel infoPanel;
     private final LogPanel logPanel;
     private final Table speedBar = new Table();
     private final Label pausedLabel;
+    private final Table dockTip;        // 地图小图标悬停提示(uiStage 顶层,跨坐标换算)
+    private final Label dockTipLabel;
     private final Vector2 tmp = new Vector2();
 
     private String selKind;
@@ -61,8 +72,6 @@ public class GameScreen implements Screen {
     private float grabX = CardActor.W / 2f, grabY = CardActor.H / 2f;
 
     private final Runnable onExitToMenu;
-    private Table pauseMenu;
-    private Label volumeLabel;
 
     public GameScreen(Ui ui, GameState state, float[] speeds, Runnable onExitToMenu) {
         this.ui = ui;
@@ -91,7 +100,6 @@ public class GameScreen implements Screen {
         uiStage.addActor(infoPanel);
         infoPanel.setVisible(false);
 
-        setupPauseMenu();
         setupWorldInput();
 
         multiplexer = new InputMultiplexer(uiStage, worldStage);
@@ -113,7 +121,7 @@ public class GameScreen implements Screen {
                     return true;
                 }
                 if (keycode == Input.Keys.ESCAPE) {
-                    togglePauseMenu();
+                    openSystemMenu();
                     return true;
                 }
                 return false;
@@ -129,12 +137,21 @@ public class GameScreen implements Screen {
         modMenuBtn.addListener(new ClickListener(Input.Buttons.LEFT) {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                showModSystemMenu(modMenuBtn);
+                openSystemMenu();
             }
         });
 
         topLeftTable.add(modMenuBtn).size(110, 34);
         uiStage.addActor(topLeftTable);
+
+        // --- 密教式 UI:地图小图标 + 点开展开面板 + 悬停提示 ---
+        dockTip = new Table();
+        dockTipLabel = new Label("", ui.labelStyle(Color.GOLD));
+        dockTip.add(dockTipLabel).pad(4, 8, 4, 8);
+        dockTip.setBackground(ui.rect(new Color(0.10f, 0.08f, 0.14f, 0.95f)));
+        dockTip.setTouchable(Touchable.disabled);
+        dockTip.setVisible(false);
+        uiStage.addActor(dockTip);
 
         if (state.situations.isEmpty()) {
             spawnInitialEvents();
@@ -172,117 +189,11 @@ public class GameScreen implements Screen {
         state.chronicle.addRecord(0, "已至。");
     }
 
-    private void togglePauseMenu() {
-        boolean nowVisible = !pauseMenu.isVisible();
-        pauseMenu.setVisible(nowVisible);
-        if (nowVisible) {
-            pauseMenu.toFront();
-            clock.paused = true;
-            pausedLabel.setVisible(true);
-        } else {
-            clock.paused = false;
-            pausedLabel.setVisible(false);
-        }
-    }
-
-    private void setupPauseMenu() {
-        pauseMenu = new Table();
-        pauseMenu.setFillParent(true);
-        pauseMenu.setBackground(ui.rect(new Color(0f, 0f, 0f, 0.85f)));
-        pauseMenu.setVisible(false);
-        pauseMenu.setTouchable(Touchable.enabled);
-
-        Table window = new Table();
-        window.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
-        window.pad(20);
-
-        window.add(new Label("暂停 / 设置", ui.labelStyle(Color.GOLD))).padBottom(20).row();
-
-        TextButton saveBtn = new TextButton("保存游戏", ui.buttonStyle());
-        saveBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(
-                    new SaveLoadScreen(ui, SaveLoadScreen.Mode.SAVE, state, () -> {
-                        ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(GameScreen.this);
-                    })
-                );
-            }
-        });
-        window.add(saveBtn).width(250).height(50).padBottom(10).row();
-
-        TextButton loadBtn = new TextButton("读取游戏", ui.buttonStyle());
-        loadBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(
-                    new SaveLoadScreen(ui, SaveLoadScreen.Mode.LOAD, null, () -> {
-                        ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(GameScreen.this);
-                    })
-                );
-            }
-        });
-        window.add(loadBtn).width(250).height(50).padBottom(10).row();
-
-        Table volRow = new Table();
-        // 创建一个实时显示当前音量的 Label
-        volumeLabel = new Label("音量: " + (int)(AudioManager.getInstance().getVolume() * 100) + "%", ui.labelStyle(Color.WHITE));
-        volRow.add(volumeLabel).width(80).left().padRight(10);
-
-        // 创建 Slider：最小值0，最大值1，步长0.01
-        Slider volSlider = new Slider(0f, 1f, 0.01f, false, ui.sliderStyle());
-        volSlider.setValue(AudioManager.getInstance().getVolume()); // 初始值设为当前音量
-
-        // 监听拖动事件
-        volSlider.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                float val = volSlider.getValue();
-                AudioManager.getInstance().setVolume(val);
-                volumeLabel.setText("音量: " + (int)(val * 100) + "%");
-            }
-        });
-
-        volRow.add(volSlider).width(150).height(30);
-
-        window.add(volRow).padBottom(20).row();
-
-        TextButton menuBtn = new TextButton("保存并回到主菜单", ui.buttonStyle());
-        menuBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent e, Actor a) {
-                onExitToMenu.run();
-            }
-        });
-        window.add(menuBtn).width(250).height(50).row();
-
-        pauseMenu.add(window);
-        uiStage.addActor(pauseMenu);
-    }
-
-    private void showModSystemMenu(Actor anchor) {
-        for (Actor child : uiStage.getActors()) {
-            if (child instanceof Table && "mod_menu".equals(child.getName())) {
-                child.remove();
-                return;
-            }
-        }
-
-        Table menuTable = new Table();
-        menuTable.setName("mod_menu");
-        menuTable.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
-        menuTable.pad(10);
-
-        TextButton btnEditor = new TextButton("🛠️ 打开 Mod 管理器", ui.buttonStyle());
-        btnEditor.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(new ModEditorScreen(ui));
-                if (menuTable.getParent() != null) menuTable.remove();
-            }
-        });
-        menuTable.add(btnEditor).width(200).height(40).row();
-
-        Vector2 pos = anchor.localToStageCoordinates(new Vector2(0, 0));
-        menuTable.setPosition(pos.x, pos.y - menuTable.getPrefHeight() - 10);
-        uiStage.addActor(menuTable);
+    /** 打开密教式系统菜单(独立全屏界面,风格同 ModEditorScreen)。 */
+    private void openSystemMenu() {
+        hideInfo();
+        ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(
+            new SystemMenuScreen(ui, state, this, onExitToMenu));
     }
 
     private void buildSpeedBar(float[] speeds) {
@@ -362,6 +273,11 @@ public class GameScreen implements Screen {
             if (!(a instanceof WorldBackground)) a.remove();
         }
 
+        // 新出现的局面:事件窗自动展开成面板,行动窗收成地图小图标
+        for (Situation s : state.situations) {
+            if (seenIds.add(s.situationId) && s.eventWindow) s.uiExpanded = true;
+        }
+
         java.util.Set<ElementInstance> slotCards = new java.util.HashSet<>();
         for (Situation s : state.situations) {
             for (Slot slot : s.slots) {
@@ -369,15 +285,7 @@ public class GameScreen implements Screen {
             }
         }
 
-        List<WindowView> views = new ArrayList<>();
-        for (Situation s : state.situations) {
-            WindowView v = new WindowView(ui, s);
-            v.setPosition(s.x, s.y);
-            addWindowClick(v);
-            addWindowDrag(v);
-            worldGroup.addActor(v);
-            views.add(v);
-        }
+        buildTokens();
 
         for (ElementInstance c : state.cards) {
             if (slotCards.contains(c)) continue;
@@ -390,7 +298,60 @@ public class GameScreen implements Screen {
             worldGroup.addActor(a);
         }
 
-        for (WindowView v : views) {
+        buildExpandedPanels();
+    }
+
+    // ---------- 地图小图标(与卡牌同在世界层) ----------
+
+    private void buildTokens() {
+        for (Situation s : state.situations) {
+            TokenActor t = new TokenActor(s);
+            t.setPosition(sanitizeCoord(s.x, state.worldWidth), sanitizeCoord(s.y, state.worldHeight));
+            worldGroup.addActor(t);
+
+            final Situation fs = s;
+            dnd.addTarget(new DragAndDrop.Target(t) {
+                @Override
+                public boolean drag(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
+                    return firstPlaceableSlot(fs, (ElementInstance) payload.getObject()) >= 0;
+                }
+
+                @Override
+                public void drop(DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
+                    ElementInstance card = (ElementInstance) payload.getObject();
+                    int idx = firstPlaceableSlot(fs, card);
+                    if (idx >= 0) {
+                        detach(card);
+                        fs.placeCard(idx, card);
+                        fs.uiExpanded = true; // 密教式:把牌丢到图标上,面板当场展开
+                        dirty = true;
+                    }
+                }
+            });
+        }
+    }
+
+    private int firstPlaceableSlot(Situation s, ElementInstance card) {
+        if (card == null || card.locked) return -1;
+        for (int i = 0; i < s.slots.size(); i++) {
+            if (s.canPlace(i, card)) return i;
+        }
+        return -1;
+    }
+
+    // ---------- 展开的局面面板(世界系,挂在图标上方) ----------
+
+    private void buildExpandedPanels() {
+        for (Situation s : state.situations) {
+            if (!s.uiExpanded) continue;
+            WindowView v = new WindowView(ui, s);
+            addWindowClick(v);
+            worldGroup.addActor(v);
+            // 密教式:面板长在地图小图标上方,小图标保留作收起开关
+            v.setPosition(
+                sanitizeCoord(s.x, state.worldWidth),
+                sanitizeCoord(s.y, state.worldHeight) + TOKEN + 6f);
+
             for (SlotActor sa : v.slotActors) {
                 addSlotTarget(sa);
                 addSelectOnClick(sa);
@@ -403,26 +364,133 @@ public class GameScreen implements Screen {
         }
     }
 
-    private void addWindowDrag(WindowView view) {
-        view.header.addListener(new DragListener() {
-            private float startX, startY, actorX, actorY;
-            @Override
-            public void dragStart(InputEvent event, float x, float y, int pointer) {
-                startX = event.getStageX();
-                startY = event.getStageY();
-                actorX = view.getX();
-                actorY = view.getY();
-            }
-            @Override
-            public void drag(InputEvent event, float x, float y, int pointer) {
-                float dx = event.getStageX() - startX;
-                float dy = event.getStageY() - startY;
-                view.setPosition(actorX + dx, actorY + dy);
-                view.situation.x = view.getX();
-                view.situation.y = view.getY();
-            }
-        });
+    private void toggleExpand(Situation s) {
+        s.uiExpanded = !s.uiExpanded;
+        dirty = true;
     }
+
+    private String situationTitle(Situation s) {
+        if (s.eventWindow && s.selected != null) {
+            return ui.texts.get("event." + s.selected.id + ".name", s.selected.id);
+        }
+        if (s.verbId != null) {
+            return ui.texts.get("slot." + s.verbId + ".name", s.verbId);
+        }
+        return s.situationId;
+    }
+
+    // ---------- 图标悬停提示 ----------
+
+    private void showDockTip(TokenActor t) {
+        dockTipLabel.setText(situationTitle(t.s));
+        dockTip.pack();
+        tmp.set(t.getWidth() + 6f, t.getHeight() / 2f - dockTip.getHeight() / 2f);
+        t.localToStageCoordinates(tmp);            // 图标 → 世界 Stage 坐标
+        worldStage.stageToScreenCoordinates(tmp);  // → 屏幕像素
+        uiStage.screenToStageCoordinates(tmp);     // → uiStage 逻辑坐标
+        dockTip.setPosition(
+            Math.min(tmp.x, STAGE_W - dockTip.getWidth() - 4f),
+            Math.max(4f, Math.min(tmp.y, STAGE_H - dockTip.getHeight() - 4f)));
+        dockTip.setVisible(true);
+        dockTip.toFront();
+    }
+
+    private void hideDockTip() {
+        dockTip.setVisible(false);
+    }
+
+    // ---------- 图标本体 ----------
+
+    private class TokenActor extends Table {
+        final Situation s;
+        private final Table progressTrack;
+        private final Table progressFill;
+        private Cell<?> fillCell;
+
+        TokenActor(Situation s) {
+            this.s = s;
+            setSize(TOKEN, TOKEN);
+            setBackground(ui.rect(TOKEN_BG));
+            setTouchable(Touchable.enabled);
+
+            // 槽里有牌就展示牌面,没有就展示名称首字
+            ElementInstance seed = s.slots.isEmpty() ? null : s.slots.get(0).content;
+            Texture tex = (seed != null && seed.def.image != null && !seed.def.image.isEmpty())
+                ? ui.texture(seed.def.image) : null;
+            if (tex != null) {
+                Image img = new Image(tex);
+                img.setScaling(Scaling.fit);
+                add(img).size(TOKEN - 10, TOKEN - 18).pad(5).row();
+            } else {
+                String title = situationTitle(s);
+                String ch = title.isEmpty() ? "?" : new String(Character.toChars(title.codePointAt(0)));
+                Label l = new Label(ch, ui.labelStyle(Color.GOLD));
+                l.setTouchable(Touchable.disabled);
+                add(l).expand().center().row();
+            }
+
+            progressTrack = new Table();
+            progressTrack.setBackground(ui.rect(new Color(0.08f, 0.07f, 0.11f, 1f)));
+            progressFill = new Table();
+            progressFill.setBackground(ui.rect(new Color(0.62f, 0.45f, 0.20f, 1f)));
+            fillCell = progressTrack.add(progressFill).height(4f).width(0f);
+            progressTrack.setTouchable(Touchable.disabled);
+            progressTrack.setVisible(false);
+            add(progressTrack).fillX().height(4f).pad(3, 6, 5, 6);
+
+            addListener(new InputListener() {
+                @Override
+                public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
+                    setBackground(ui.rect(TOKEN_BG_HOVER));
+                    showDockTip(TokenActor.this);
+                }
+
+                @Override
+                public void exit(InputEvent event, float x, float y, int pointer, Actor toActor) {
+                    if (toActor == null || !toActor.isDescendantOf(TokenActor.this)) {
+                        setBackground(ui.rect(TOKEN_BG));
+                        hideDockTip();
+                    }
+                }
+            });
+            addListener(new ClickListener(Input.Buttons.LEFT) {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    toggleExpand(s);
+                }
+            });
+            // 图标可在地图上拖动(移动后写回 s.x/s.y,随存档保存)
+            addListener(new DragListener() {
+                private float gx, gy;
+
+                @Override
+                public void dragStart(InputEvent event, float x, float y, int pointer) {
+                    gx = x;
+                    gy = y;
+                }
+
+                @Override
+                public void drag(InputEvent event, float x, float y, int pointer) {
+                    moveBy(x - gx, y - gy);
+                    s.x = getX();
+                    s.y = getY();
+                }
+            });
+        }
+
+        @Override
+        public void act(float delta) {
+            super.act(delta);
+            boolean run = s.isRunning() && s.running.time > 0;
+            progressTrack.setVisible(run);
+            if (run) {
+                float frac = Math.min(1f, Math.max(0f, s.timer / s.running.time));
+                fillCell.width((TOKEN - 12f) * frac);
+            }
+        }
+    }
+
+    // ---------- 拖拽 ----------
 
     private void addSource(CardActor actor) {
         dnd.addSource(new DragAndDrop.Source(actor) {
@@ -543,6 +611,7 @@ public class GameScreen implements Screen {
         infoX = event.getStageX();
         infoY = event.getStageY();
         lastInfoTitle = null;
+        infoPanel.toFront();
     }
 
     private void hideInfo() {
@@ -660,6 +729,7 @@ public class GameScreen implements Screen {
         if (dnd.isDragging()) {
             Actor a = dnd.getDragActor();
             if (a != null) {
+                // 虚影挂到 worldStage 顶层(源/目标已全部回到世界系,缩放下判定一致)
                 if (a.getStage() == null) worldStage.addActor(a);
                 tmp.set(Gdx.input.getX(), Gdx.input.getY());
                 worldStage.screenToStageCoordinates(tmp);

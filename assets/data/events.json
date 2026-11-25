@@ -34,7 +34,7 @@
       { "type": "unlock_verb", "verb": "study"},
       { "type": "unlock_verb", "verb": "enhance"},
       { "type": "unlock_verb", "verb": "music"},
-      { "type": "trigger", "event": "time_pass_insitute"}
+      { "type": "trigger", "event": "time_pass_institute"}
     ]
   },
   {
@@ -187,7 +187,7 @@
     ]
   },
   {
-    "id": "time_pass_insitute",
+    "id": "time_pass_institute",
     "start": "manual",
     "slot": "none",
     "autoStart": true,
@@ -199,7 +199,7 @@
         "type": "check", "aspects": {"money": 1},
         "onFail": [ { "type": "trigger", "event": "illness" } ]
       },
-      { "type": "trigger", "event": "time_pass_insitute"},
+      { "type": "trigger", "event": "time_pass_institute"},
       { "type": "consume", "target": "eye", "amount": 1},
       { "type": "random_do", "options": [
         {

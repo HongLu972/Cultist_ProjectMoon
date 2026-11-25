@@ -40,7 +40,7 @@ tasks.register('copyDependencies', Copy) {
 def safeVersion = project.version.toString().replaceAll("[^0-9.]", "")
 if (safeVersion.isEmpty() || safeVersion.equals(".")) safeVersion = "1.0.0"
 
-def iconFile = rootProject.file('assets/img/icons/araya.ico')
+def iconFile = rootProject.file('assets/img/icons/icon.ico')
 def iconPath = iconFile.exists() ? iconFile.absolutePath : ""
 
 def mainJarName = tasks.jar.archiveFile.get().asFile.name
@@ -146,9 +146,6 @@ tasks.register('makeBothExe') {
     copy { from rootProject.file('assets/img'); into new File(originModDir, 'img') }
     copy { from rootProject.file('assets/audio'); into new File(originModDir, 'audio') }
     copy { from rootProject.file('assets/font'); into new File(finalDir, 'font') }
-
-    // 把 ico 直接扔在根目录，和 exe 当邻居！
-    copy { from rootProject.file('assets/img/icons/araya.ico'); into finalDir }
 
     // 3. 只保留最朴素的 Bat 启动器（如果你连这个都不想要，直接把这行代码也删了）
     def batNames = [

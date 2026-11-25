@@ -137,7 +137,7 @@
 "slot.prepare.desc": {
 	"value": "Consume 1 Fund to prepare 1 Readiness and 1 Evacuation."
 },
-"scenario.ayin_insitute.name": {
+"scenario.ayin_institute.name": {
 	"value": "Ayin: Insitute"
 },
 "ui.paused": {
@@ -149,7 +149,7 @@
 "ui.choose_scenario": {
 	"value": "Choose a Scenario"
 },
-"scenario.ayin_insitute.desc": {
+"scenario.ayin_institute.desc": {
 	"value": "Insitute, START!!!"
 },
 "element.ex_health.name": {
@@ -296,7 +296,7 @@
 "aspect.cogito.name": {
 	"value": "Cogito Adaptability"
 },
-"event.time_pass_insitute.name": {
+"event.time_pass_institute.name": {
 	"value": "Time Pass"
 },
 "slot.f_slot_11.name": {

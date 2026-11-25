@@ -1,6 +1,6 @@
 [English](./README_en.md) | 中文
 
-# 月计模拟器 (Cultist Project Moon) 数据与系统 API 文档 v1.0.0-alpha.5
+# 月计模拟器 (Cultist Project Moon) 数据与系统 API 文档 v1.0.0-beta.2
 
 本游戏采用**纯数据驱动（Data-Driven）**架构。通过修改 JSON 文件，你可以完全重写剧情、修改数值、增加卡牌、乃至制作大型剧情 Mod，而无需改动任何 Java 代码。**同时，游戏内置了强大的可视化 Mod 编辑器，即便你不会写代码也能轻松搓出属于你的模组喵！**
 
@@ -116,6 +116,12 @@
 *   `{"type": "trigger", "event": "next_event"}`：触发另一个事件。
 *   `{"type": "end_game", "ending": "poverty"}`：立刻结束游戏，进入指定结局。
 
+#### 随机节点
+权重不需要总和为 100，引擎会自动按总权重归一化计算概率。
+*   `{"type": "random_create", "options": [{"target": "eye", "weight": 70}, {"target": "passion", "weight": 30}]}`：按权重随机创造一张卡牌。
+*   `{"type": "random_do", "options": [{"weight": 1, "action": {"type": "create", "target": "eye", "amount": 1}}, {"weight": 3, "action": {"type": "chance", "percent": 50}}]}`：按权重随机执行一段动作代码（`action` 里可嵌套任意动作树，实现子分支）。
+*   `{"type": "random_trigger", "options": [{"event": "found_person", "weight": 1}, {"event": "nothing", "weight": 99}]}`：按权重随机触发一个事件。
+
 #### 系统指令
 *   `{"type": "unlock_verb", "verb": "study"}`：解锁一个新的常驻行动窗口。
 *   `{"type": "play_music", "track": "audio/bgm_boss.ogg"}`：无缝切换背景音乐。
@@ -141,6 +147,10 @@
   }
 ]
 ```
+
+**结局文本占位符**（`ending.<id>.desc` 与报幕字幕通用）：结算画面会把文本里的占位符替换成场面上对应卡牌的数量。
+*   `{casualty}` / `{readiness}` / `{evacuation}` / `{evidence}` → 对应同名卡牌在场上的数量。
+*   `{record_count}` → 编年史（chronicle）已记录的事件条数。
 
 ---
 
@@ -192,7 +202,7 @@
 ## 🛠️ 9. 引擎高级功能（玩家与开发者指南）
 
 ### 💾 9.1 多存档系统
-*   **快捷键**：游戏内按 `Esc` 呼出菜单进行存读档。（空格键用于纯粹暂停/恢复时间）。
+*   **快捷键**：游戏内按 `Esc`（或点左上角 ☰）呼出**全屏系统菜单**（返回游戏 / 存读档 / 打开 Mod 管理器 / 音量调节）。（空格键用于纯粹暂停/恢复时间）。
 *   **菜单操作**：包含 20 个独立存档槽位，支持**自定义存档命名**。
 *   **存档位置**：保存在游戏根目录下的 `saves/slot_1.json` ~ `slot_20.json`，完美恢复卡牌坐标、事件倒计时、槽位数据以及报幕编年史。
 

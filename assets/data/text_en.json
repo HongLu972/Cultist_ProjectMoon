@@ -20,8 +20,8 @@
 
   "scenario.ayin.name": "Ayin: Michelle's Despair",
   "scenario.ayin.desc": "The eve of the old lab's fall. Face the endless cycle of despair and make your arrangements.",
-  "scenario.ayin_insitute.name": "Ayin: Insitute",
-  "scenario.ayin_insitute.desc": "Insitute, START!!!",
+  "scenario.ayin_institute.name": "Ayin: Insitute",
+  "scenario.ayin_institute.desc": "Insitute, START!!!",
 
   "aspect.body.name": "Body",
   "aspect.money.name": "Funds",
@@ -95,7 +95,7 @@
   "event.time_F.name": "Whistleblowing",
   "event.strongRecover.name": "Try to cure",
   "event.carmen_lecture_1.name": "The Lecture",
-  "event.time_pass_insitute.name": "Time Pass",
+  "event.time_pass_institute.name": "Time Pass",
   "event.illness.name": "Illness Spread",
 
   "ending.te_underlight.name": "TE — In the Light", "ending.te_underlight.desc": "This is the necessary sacrifice — A.",

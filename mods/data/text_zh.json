@@ -176,7 +176,7 @@
 "slot.prepare.desc": {
 	"value": "消耗1钱财，准备1战备和1撤离。"
 },
-"scenario.ayin_insitute.name": {
+"scenario.ayin_institute.name": {
 	"value": "Ayin：研究所"
 },
 "slot.health_learnt_1_slot.name": {
@@ -197,7 +197,7 @@
 "ui.choose_scenario": {
 	"value": "选择开局"
 },
-"scenario.ayin_insitute.desc": {
+"scenario.ayin_institute.desc": {
 	"value": "研究所，启动！！！"
 },
 "element.power_3.name": {
@@ -413,7 +413,7 @@
 "aspect.cogito.name": {
 	"value": "Cogito适应性"
 },
-"event.time_pass_insitute.name": {
+"event.time_pass_institute.name": {
 	"value": "时间流逝"
 },
 "slot.f_slot_11.name": {

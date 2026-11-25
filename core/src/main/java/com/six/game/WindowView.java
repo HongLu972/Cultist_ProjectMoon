@@ -2,12 +2,14 @@ package com.six.game;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.scenes.scene2d.utils.DragListener;
 import com.six.game.core.Situation;
 import com.six.game.core.Slot;
 import java.util.ArrayList;
@@ -49,6 +51,26 @@ public class WindowView extends Table {
         header.add(titleLabel).left().expandX();
         add(header).growX().padBottom(8).row();
         // -----------------------------------------
+
+        // 密教式面板：拖标题栏移动,位置写回 situation.x/y(世界坐标,随存档保存)
+        header.addListener(new DragListener() {
+            private float grabX, grabY;
+
+            @Override
+            public void dragStart(InputEvent event, float x, float y, int pointer) {
+                grabX = x;
+                grabY = y;
+            }
+
+            @Override
+            public void drag(InputEvent event, float x, float y, int pointer) {
+                float nx = getX() + (x - grabX);
+                float ny = getY() + (y - grabY);
+                setPosition(nx, ny);
+                situation.x = nx;
+                situation.y = ny;
+            }
+        });
 
         Table slotRow = new Table();
         for (int i = 0; i < situation.slots.size(); i++) {

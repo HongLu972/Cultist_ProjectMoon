@@ -20,8 +20,8 @@
 
   "scenario.ayin.name": "Ayin：终点",
   "scenario.ayin.desc": "旧研究所的覆灭前夕。面对无尽的绝望循环，你必须做出安排。(AI制作)",
-  "scenario.ayin_insitute.name": "Ayin：研究所",
-  "scenario.ayin_insitute.desc": "研究所，启动！！！",
+  "scenario.ayin_institute.name": "Ayin：研究所",
+  "scenario.ayin_institute.desc": "研究所，启动！！！",
 
   "aspect.body.name": "身体",
   "aspect.money.name": "钱财",
@@ -130,7 +130,7 @@
   "event.time_F.name": "告发",
   "event.strongRecover.name": "试图治愈",
   "event.carmen_lecture_1.name": "演讲",
-  "event.time_pass_insitute.name": "时间流逝",
+  "event.time_pass_institute.name": "时间流逝",
   "event.illness.name": "疾病肆虐",
   "event.find_Person.name": "招人",
   "event.find_Person_II.name": "招人",

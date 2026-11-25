@@ -9,7 +9,7 @@
     "autoEvents": []
   },
   {
-    "id": "ayin_insitute",
+    "id": "ayin_institute",
     "cards": [ { "card": "carmen_lecture_flyer", "amount": 1 } ],
     "verbs": [ "out" ],
     "autoEvents": []

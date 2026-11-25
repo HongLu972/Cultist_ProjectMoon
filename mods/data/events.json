@@ -99,7 +99,7 @@
 		},
 		{
 			"type": "trigger",
-			"event": "time_pass_insitute"
+			"event": "time_pass_institute"
 		}
 	]
 },
@@ -427,7 +427,7 @@
 },
 {
 	"type": "com.six.game.core.EventDef",
-	"id": "time_pass_insitute",
+	"id": "time_pass_institute",
 	"slot": "none",
 	"autoStart": true,
 	"time": 60,
@@ -451,7 +451,7 @@
 		},
 		{
 			"type": "trigger",
-			"event": "time_pass_insitute"
+			"event": "time_pass_institute"
 		},
 		{
 			"type": "consume",
