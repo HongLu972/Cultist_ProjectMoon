@@ -42,7 +42,7 @@ public class EndingScreen implements Screen {
         mainTextLabel.setWrap(true);
         root.add(mainTextLabel).width(800).padBottom(50).row();
 
-        TextButton menuBtn = new TextButton("回到主菜单", ui.buttonStyle());
+        TextButton menuBtn = new TextButton(ui.texts.get("ui.back_menu", "回到主菜单"), ui.buttonStyle());
         menuBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {

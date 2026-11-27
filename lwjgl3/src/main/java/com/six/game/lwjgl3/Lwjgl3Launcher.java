@@ -49,19 +49,27 @@ public class Lwjgl3Launcher {
         Pixmap source = null;
         Pixmap[] icons = new Pixmap[ICON_SIZES.length];
         try {
-            File file = null;
-            for (String candidate : ICON_CANDIDATES) {
-                File f = new File(candidate);
-                if (f.exists()) { file = f; break; }
+            FileHandle handle = null;
+            // 优先用 jar 内置图标（core/src/main/resources/icon.png，打包后随 jar 走，exe 不再依赖外部文件）
+            FileHandle cp = Gdx.files.classpath("icon.png");
+            if (cp.exists()) {
+                handle = cp;
+                System.out.println("[Icon] 使用 jar 内置图标");
+            } else {
+                File file = null;
+                for (String candidate : ICON_CANDIDATES) {
+                    File f = new File(candidate);
+                    if (f.exists()) { file = f; break; }
+                }
+                if (file == null) {
+                    System.out.println("[Icon] 没找到图标文件,工作目录: " + new File(".").getAbsolutePath());
+                    return;
+                }
+                handle = Gdx.files.absolute(file.getAbsolutePath());
+                System.out.println("[Icon] 使用外部图标 " + file.getAbsolutePath());
             }
-            if (file == null) {
-                System.out.println("[Icon] 没找到图标文件,工作目录: " + new File(".").getAbsolutePath());
-                return;
-            }
-            FileHandle handle = Gdx.files.absolute(file.getAbsolutePath());
             source = new Pixmap(handle);
-            System.out.println("[Icon] 使用 " + file.getAbsolutePath()
-                + " (" + source.getWidth() + "x" + source.getHeight() + ")");
+            System.out.println("[Icon] 图标尺寸: " + source.getWidth() + "x" + source.getHeight());
 
             // 居中裁成正方形;竖图想取偏上的脸,可以把 sy 改成 0
             int side = Math.min(source.getWidth(), source.getHeight());

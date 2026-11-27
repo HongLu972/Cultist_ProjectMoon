@@ -1,6 +1,6 @@
 [English](./README_en.md) | 中文
 
-# 月计模拟器 (Cultist Project Moon) 数据与系统 API 文档 v1.0.0-beta.2
+# 月计模拟器 (Cultist Project Moon) 数据与系统 API 文档 v1.0.0-beta.3
 
 本游戏采用**纯数据驱动（Data-Driven）**架构。通过修改 JSON 文件，你可以完全重写剧情、修改数值、增加卡牌、乃至制作大型剧情 Mod，而无需改动任何 Java 代码。**同时，游戏内置了强大的可视化 Mod 编辑器，即便你不会写代码也能轻松搓出属于你的模组喵！**
 
@@ -63,7 +63,7 @@
 ```json
 [ { "id": "work", "icon": "img/icons/work_hammer.png" }, { "id": "study" } ]
 ```
-*(注：UI 窗口左上角的图标，可以通过在 `text_zh.json` 中写 `slot.<id>.icon` 来配置。)*
+*(注：地图上行动小图标的图案由 `icon` 字段（或 `text_zh.json` 中的 `slot.<id>.icon`）配置，未配置则自动缩放显示行动名全文；`slot.<id>.name` / `slot.<id>.desc` 是行动窗口的名称与**默认描述**，会显示在右侧详情面板里。)*
 
 ---
 
@@ -94,7 +94,7 @@
 | `slot` | String | 占用的行动槽 ID。填 `"none"` 表示开一个独立的事件窗口。`auto` 和 `linked` 事件必须是 `"none"`。 |
 | `autoStart`| Boolean | (可选) 仅 `manual` 可用。满足条件后自动开始，不用点“开始”。 |
 | `time` | Float | 持续时间（秒）。 |
-| `icon` | String | (可选) 事件窗口左上角的图标路径。 |
+| `icon` | String | (可选) 事件图标路径：`slot:"none"` 的事件用它作为**地图小图标**的图案（也可用文本键 `event.<id>.icon` 配置）。 |
 | `forceDrainAspects` | Array | (可选) **按优先级强制吸入**。事件运行期间，只要场上有该词条的未锁定卡牌，且自身槽位为空，就会被强行吸进去（如 `["hope", "despair"]` 优先吸希望，没有再吸绝望）。 |
 | `input` | Object | (可选) 启动所需的词条门槛，如 `{"body": 1}`。 |
 | `slots` | Array | (可选) 事件额外生成的槽位列表。`id`: 唯一 ID；`accepts`: 限制放入卡牌必须带有的词条；`required`: 是否必填。 |
@@ -121,6 +121,15 @@
 *   `{"type": "random_create", "options": [{"target": "eye", "weight": 70}, {"target": "passion", "weight": 30}]}`：按权重随机创造一张卡牌。
 *   `{"type": "random_do", "options": [{"weight": 1, "action": {"type": "create", "target": "eye", "amount": 1}}, {"weight": 3, "action": {"type": "chance", "percent": 50}}]}`：按权重随机执行一段动作代码（`action` 里可嵌套任意动作树，实现子分支）。
 *   `{"type": "random_trigger", "options": [{"event": "found_person", "weight": 1}, {"event": "nothing", "weight": 99}]}`：按权重随机触发一个事件。
+
+#### 状态与叙事
+*   `{"type": "transform", "target": "illness", "to": "health", "amount": 1}`：**原位变牌**。把场上的牌变成另一张（`amount: -1` 表示全部变）。优先槽内，其次桌面未锁定；保留堆叠数量、临时词条与所在槽位。
+*   `{"type": "record", "text": "灯光熄灭了。"}`：往报幕编年史里写一行字（结局画面可见）。
+*   `{"type": "set_flag", "flag": "met_carmen", "value": 1}`：设置剧情旗标（随存档保存）。
+*   `{"type": "check_flag", "flag": "met_carmen", "value": 1}`：检查旗标是否 ≥ 指定值。
+*   `{"type": "check_count", "target": "evidence", "amount": 3}`：检查场上某卡牌（按 id，含槽内，按堆叠计数）总数是否 ≥ amount。
+*   `{"type": "destroy", "target": "curse", "amount": 1}`：摧毁桌面上带 target 词条（或 id）的未锁定散牌（`amount: -1` = 全部；窗口槽里的牌不受影响；一张都没摧到或不够数则失败）。
+*   `{"type": "stop_event", "event": "time_A"}`：停止指定事件的一切运行（后台循环、延时触发、正在跑的窗口），停到了即成功。
 
 #### 系统指令
 *   `{"type": "unlock_verb", "verb": "study"}`：解锁一个新的常驻行动窗口。

@@ -6,7 +6,10 @@ import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
@@ -19,6 +22,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.DragAndDrop;
 import com.badlogic.gdx.scenes.scene2d.utils.DragListener;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -53,6 +57,9 @@ public class GameScreen implements Screen {
     private final Group worldGroup = new Group();
     private final DragAndDrop dnd = new DragAndDrop();
     private final java.util.HashSet<String> seenIds = new java.util.HashSet<>();
+    /** 右侧共享详情面板当前展示的局面(null = 面板收起)。 */
+    private Situation selectedSituation;
+    private WindowView detailPanel;
 
     private final InfoPanel infoPanel;
     private final LogPanel logPanel;
@@ -61,6 +68,8 @@ public class GameScreen implements Screen {
     private final Table dockTip;        // 地图小图标悬停提示(uiStage 顶层,跨坐标换算)
     private final Label dockTipLabel;
     private final Vector2 tmp = new Vector2();
+    /** CS 式圆形进度环渲染器(TokenActor.draw 里临时切出 batch 绘制,懒创建)。 */
+    private ShapeRenderer ringSr;
 
     private String selKind;
     private String selId;
@@ -95,7 +104,7 @@ public class GameScreen implements Screen {
         uiRoot.setFillParent(true);
         uiRoot.add(speedBar).expandX().right().pad(8).row();
         uiRoot.add().expand().row();
-        uiRoot.add(logPanel).width(LogPanel.W).right().bottom().pad(8);
+        uiRoot.add(logPanel).width(LogPanel.W).left().bottom().pad(8); // 左下角:给右侧详情面板让位
         uiStage.addActor(uiRoot);
         uiStage.addActor(infoPanel);
         infoPanel.setVisible(false);
@@ -108,7 +117,7 @@ public class GameScreen implements Screen {
         state.addListener((situation, event) -> {
             String key = "event." + event.id + ".result";
             if (ui.texts.has(key)) logPanel.add(ui.texts.get(key), ui);
-            state.chronicle.addRecord(state.totalTime, "结算事件: " + ui.texts.get("event." + event.id + ".name", event.id));
+            state.chronicle.addRecord(state.totalTime, ui.texts.get("ui.log_settle", "结算事件: ") + ui.texts.get("event." + event.id + ".name", event.id));
         });
 
         // 全局按键监听
@@ -133,7 +142,7 @@ public class GameScreen implements Screen {
         topLeftTable.setFillParent(true);
         topLeftTable.top().left().pad(8);
 
-        TextButton modMenuBtn = new TextButton("☰ 系统菜单", ui.buttonStyle());
+        TextButton modMenuBtn = new TextButton(ui.texts.get("ui.menu_btn", "☰ 系统菜单"), ui.buttonStyle());
         modMenuBtn.addListener(new ClickListener(Input.Buttons.LEFT) {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -186,7 +195,7 @@ public class GameScreen implements Screen {
             s.start();
         }
 
-        state.chronicle.addRecord(0, "已至。");
+        state.chronicle.addRecord(0, ui.texts.get("ui.arrived", "已至。"));
     }
 
     /** 打开密教式系统菜单(独立全屏界面,风格同 ModEditorScreen)。 */
@@ -227,6 +236,11 @@ public class GameScreen implements Screen {
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                 if (button == Input.Buttons.LEFT && (event.getTarget() == worldStage.getRoot() || event.getTarget() instanceof WorldBackground)) {
                     hideInfo();
+                    // 密教式:点空白处收起右侧详情面板
+                    if (selectedSituation != null) {
+                        selectedSituation = null;
+                        refreshDetailPanel();
+                    }
                     return true;
                 }
                 if (button == Input.Buttons.RIGHT) {
@@ -273,9 +287,9 @@ public class GameScreen implements Screen {
             if (!(a instanceof WorldBackground)) a.remove();
         }
 
-        // 新出现的局面:事件窗自动展开成面板,行动窗收成地图小图标
+        // 新出现的局面:事件窗自动顶到右侧共享面板,行动窗收成地图小图标
         for (Situation s : state.situations) {
-            if (seenIds.add(s.situationId) && s.eventWindow) s.uiExpanded = true;
+            if (seenIds.add(s.situationId) && s.eventWindow) selectedSituation = s;
         }
 
         java.util.Set<ElementInstance> slotCards = new java.util.HashSet<>();
@@ -298,7 +312,7 @@ public class GameScreen implements Screen {
             worldGroup.addActor(a);
         }
 
-        buildExpandedPanels();
+        refreshDetailPanel();
     }
 
     // ---------- 地图小图标(与卡牌同在世界层) ----------
@@ -323,7 +337,7 @@ public class GameScreen implements Screen {
                     if (idx >= 0) {
                         detach(card);
                         fs.placeCard(idx, card);
-                        fs.uiExpanded = true; // 密教式:把牌丢到图标上,面板当场展开
+                        selectedSituation = fs; // 密教式:把牌丢到图标上,面板当场展开
                         dirty = true;
                     }
                 }
@@ -339,34 +353,61 @@ public class GameScreen implements Screen {
         return -1;
     }
 
-    // ---------- 展开的局面面板(世界系,挂在图标上方) ----------
+    // ---------- 右侧共享详情面板(密教式:固定右缘 ~29% 宽,点图标替换,点空白收起) ----------
 
-    private void buildExpandedPanels() {
-        for (Situation s : state.situations) {
-            if (!s.uiExpanded) continue;
-            WindowView v = new WindowView(ui, s);
-            addWindowClick(v);
-            worldGroup.addActor(v);
-            // 密教式:面板长在地图小图标上方,小图标保留作收起开关
-            v.setPosition(
-                sanitizeCoord(s.x, state.worldWidth),
-                sanitizeCoord(s.y, state.worldHeight) + TOKEN + 6f);
+    private void refreshDetailPanel() {
+        if (detailPanel != null) {
+            detailPanel.remove();
+            detailPanel = null;
+        }
+        if (selectedSituation == null || !state.situations.contains(selectedSituation)) {
+            selectedSituation = null;
+            return;
+        }
+        WindowView v = new WindowView(ui, selectedSituation);
+        v.align(Align.top); // 内容顶对齐:面板拉满整屏高时,下方留白
+        v.setSize(v.getWidth(), STAGE_H - 52f); // 整屏高,顶部让出 52px 给右上角倍速栏,事件标题不再被遮挡
+        addWindowClick(v);
+        // 挂在世界层根节点(不在 worldGroup 里),由 render() 每帧锚定到屏幕右缘
+        worldStage.addActor(v);
+        detailPanel = v;
 
-            for (SlotActor sa : v.slotActors) {
-                addSlotTarget(sa);
-                addSelectOnClick(sa);
-                if (sa.cardActor != null) {
-                    addSource(sa.cardActor);
-                    addSelectOnClick(sa.cardActor);
-                    addCardRightClick(sa.cardActor);
-                }
+        for (SlotActor sa : v.slotActors) {
+            addSlotTarget(sa);
+            addSelectOnClick(sa);
+            addSlotHover(sa);
+            if (sa.cardActor != null) {
+                addSource(sa.cardActor);
+                addSelectOnClick(sa.cardActor);
+                addCardRightClick(sa.cardActor);
             }
         }
     }
 
-    private void toggleExpand(Situation s) {
-        s.uiExpanded = !s.uiExpanded;
-        dirty = true;
+    /** 点击地图小图标:已选中则收起,否则切换到该局面(共享面板替换内容)。 */
+    private void toggleSituation(Situation s) {
+        selectedSituation = (selectedSituation == s) ? null : s;
+        refreshDetailPanel();
+    }
+
+    /** 行动/事件窗图标:verbs.json/events.json 的 icon 字段(或文本键 slot/event.<id>.icon),没有返回 null。 */
+    private Texture situationIcon(Situation s) {
+        String path = null;
+        if (s.eventWindow) {
+            if (s.selected != null) {
+                String key = "event." + s.selected.id + ".icon";
+                if (ui.texts.has(key)) path = ui.texts.get(key, "");
+                else if (s.selected.icon != null && !s.selected.icon.isEmpty()) path = s.selected.icon;
+            }
+        } else if (s.verbId != null) {
+            String key = "slot." + s.verbId + ".icon";
+            if (ui.texts.has(key)) path = ui.texts.get(key, "");
+            else if (state.library.hasVerb(s.verbId)) {
+                VerbDef v = state.library.verb(s.verbId);
+                if (v.icon != null && !v.icon.isEmpty()) path = v.icon;
+            }
+        }
+        return (path == null || path.isEmpty()) ? null : ui.texture(path);
     }
 
     private String situationTitle(Situation s) {
@@ -379,13 +420,14 @@ public class GameScreen implements Screen {
         return s.situationId;
     }
 
-    // ---------- 图标悬停提示 ----------
+    // ---------- 悬停提示(地图小图标 + 面板槽位通用) ----------
 
-    private void showDockTip(TokenActor t) {
-        dockTipLabel.setText(situationTitle(t.s));
+    /** 世界层 actor 的悬停提示(坐标从世界层跨到 uiStage 显示)。 */
+    private void showWorldTip(Actor a, String text) {
+        dockTipLabel.setText(text);
         dockTip.pack();
-        tmp.set(t.getWidth() + 6f, t.getHeight() / 2f - dockTip.getHeight() / 2f);
-        t.localToStageCoordinates(tmp);            // 图标 → 世界 Stage 坐标
+        tmp.set(a.getWidth() + 6f, a.getHeight() / 2f - dockTip.getHeight() / 2f);
+        a.localToStageCoordinates(tmp);            // actor → 世界 Stage 坐标
         worldStage.stageToScreenCoordinates(tmp);  // → 屏幕像素
         uiStage.screenToStageCoordinates(tmp);     // → uiStage 逻辑坐标
         dockTip.setPosition(
@@ -395,17 +437,53 @@ public class GameScreen implements Screen {
         dockTip.toFront();
     }
 
+    private void showDockTip(TokenActor t) {
+        showWorldTip(t, situationTitle(t.s));
+    }
+
     private void hideDockTip() {
         dockTip.setVisible(false);
+    }
+
+    /** 槽位悬停提示:名称 + 默认描述 + 接受条件(描述可用于剧情演出)。 */
+    private String slotTipText(SlotActor sa) {
+        Slot slot = sa.situation.slots.get(sa.index);
+        boolean carrier = sa.situation.isSeed(sa.index);
+        String nameKey = carrier ? "slot.carrier" : "slot." + slot.defId;
+        StringBuilder sb = new StringBuilder(ui.texts.get(nameKey + ".name", slot.defId));
+        if (ui.texts.has(nameKey + ".desc")) {
+            sb.append('\n').append(ui.texts.get(nameKey + ".desc", ""));
+        }
+        if (carrier && !sa.situation.eventWindow) {
+            sb.append('\n').append(ui.texts.get("ui.seed_hint", "放入卡牌开始"));
+        } else if (!carrier) {
+            if (!slot.accepts.isEmpty()) {
+                sb.append('\n').append(ui.texts.get("ui.accepts", "接受")).append(": ").append(aspectList(slot.accepts));
+            } else {
+                sb.append('\n').append(ui.texts.get("ui.accepts_any", "接受任何卡牌"));
+            }
+        }
+        return sb.toString();
+    }
+
+    private void addSlotHover(SlotActor sa) {
+        sa.addListener(new InputListener() {
+            @Override
+            public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
+                showWorldTip(sa, slotTipText(sa));
+            }
+
+            @Override
+            public void exit(InputEvent event, float x, float y, int pointer, Actor toActor) {
+                if (toActor == null || !toActor.isDescendantOf(sa)) hideDockTip();
+            }
+        });
     }
 
     // ---------- 图标本体 ----------
 
     private class TokenActor extends Table {
         final Situation s;
-        private final Table progressTrack;
-        private final Table progressFill;
-        private Cell<?> fillCell;
 
         TokenActor(Situation s) {
             this.s = s;
@@ -413,30 +491,24 @@ public class GameScreen implements Screen {
             setBackground(ui.rect(TOKEN_BG));
             setTouchable(Touchable.enabled);
 
-            // 槽里有牌就展示牌面,没有就展示名称首字
+            // 槽里有牌就展示牌面;没有就用 verbs.json/events.json 定义的小图标;
+            // 都没有就展示完整名称,字号自动缩放到塞进小方块
             ElementInstance seed = s.slots.isEmpty() ? null : s.slots.get(0).content;
             Texture tex = (seed != null && seed.def.image != null && !seed.def.image.isEmpty())
                 ? ui.texture(seed.def.image) : null;
+            if (tex == null) tex = situationIcon(s);
             if (tex != null) {
                 Image img = new Image(tex);
                 img.setScaling(Scaling.fit);
                 add(img).size(TOKEN - 10, TOKEN - 18).pad(5).row();
             } else {
-                String title = situationTitle(s);
-                String ch = title.isEmpty() ? "?" : new String(Character.toChars(title.codePointAt(0)));
-                Label l = new Label(ch, ui.labelStyle(Color.GOLD));
+                Label l = new Label(situationTitle(s), ui.labelStyle(Color.GOLD));
                 l.setTouchable(Touchable.disabled);
+                float avail = TOKEN - 12f;
+                float w = l.getPrefWidth();
+                if (w > avail && w > 0f) l.setFontScale(Math.max(0.3f, avail / w));
                 add(l).expand().center().row();
             }
-
-            progressTrack = new Table();
-            progressTrack.setBackground(ui.rect(new Color(0.08f, 0.07f, 0.11f, 1f)));
-            progressFill = new Table();
-            progressFill.setBackground(ui.rect(new Color(0.62f, 0.45f, 0.20f, 1f)));
-            fillCell = progressTrack.add(progressFill).height(4f).width(0f);
-            progressTrack.setTouchable(Touchable.disabled);
-            progressTrack.setVisible(false);
-            add(progressTrack).fillX().height(4f).pad(3, 6, 5, 6);
 
             addListener(new InputListener() {
                 @Override
@@ -456,7 +528,7 @@ public class GameScreen implements Screen {
             addListener(new ClickListener(Input.Buttons.LEFT) {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    toggleExpand(s);
+                    toggleSituation(s);
                 }
             });
             // 图标可在地图上拖动(移动后写回 s.x/s.y,随存档保存)
@@ -481,12 +553,36 @@ public class GameScreen implements Screen {
         @Override
         public void act(float delta) {
             super.act(delta);
-            boolean run = s.isRunning() && s.running.time > 0;
-            progressTrack.setVisible(run);
-            if (run) {
-                float frac = Math.min(1f, Math.max(0f, s.timer / s.running.time));
-                fillCell.width((TOKEN - 12f) * frac);
-            }
+        }
+
+        /** CS 式圆形进度环:运行中的事件在图标外圈画金色进度(临时切出 batch,用 ShapeRenderer 画弧)。 */
+        @Override
+        public void draw(Batch batch, float parentAlpha) {
+            super.draw(batch, parentAlpha);
+            if (!s.isRunning() || s.running.time <= 0) return;
+            float frac = Math.min(1f, Math.max(0f, s.timer / s.running.time));
+            batch.end();
+            if (ringSr == null) ringSr = new ShapeRenderer();
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            ringSr.setProjectionMatrix(worldStage.getCamera().combined);
+            ringSr.begin(ShapeRenderer.ShapeType.Filled);
+            tmp.set(getWidth() / 2f, getHeight() / 2f);
+            localToStageCoordinates(tmp);
+            float cx = tmp.x, cy = tmp.y;
+            float r = TOKEN * 0.60f, th = 5f;
+            int seg = 48;
+            // 轨道环(半透明黑) → 内圆抹回图标底色 → 进度弧(金色,自正上方顺时针) → 内圆再抹一次
+            ringSr.setColor(0f, 0f, 0f, 0.55f * parentAlpha);
+            ringSr.arc(cx, cy, r, 0f, 360f, seg);
+            ringSr.setColor(TOKEN_BG);
+            ringSr.arc(cx, cy, r - th, 0f, 360f, seg);
+            ringSr.setColor(0.85f, 0.68f, 0.25f, 0.95f * parentAlpha);
+            ringSr.arc(cx, cy, r, -90f, 360f * frac, seg);
+            ringSr.setColor(TOKEN_BG);
+            ringSr.arc(cx, cy, r - th, 0f, 360f, seg);
+            ringSr.end();
+            Gdx.gl.glDisable(GL20.GL_BLEND);
+            batch.begin();
         }
     }
 
@@ -726,6 +822,22 @@ public class GameScreen implements Screen {
         }
         refreshInfo();
 
+        // 右侧详情面板:整屏高、右缘贴边;setTransform 把面板在世界里放大 z 倍,相机绘制时再 ÷z
+        // → 屏幕尺寸恒定,缩放平移完全无关(等效于"独立窗口依附右侧")
+        // (改 Table 尺寸没用——布局不会缩放内容;上一版写反成 1/z,越缩放偏差越大,正是"还是会缩放"的根因)
+        if (detailPanel != null) {
+            OrthographicCamera cam = (OrthographicCamera) worldStage.getCamera();
+            float z = cam.zoom;
+            float w = detailPanel.getWidth();
+            detailPanel.setTransform(true);
+            detailPanel.setOrigin(w, 0f); // 右下角为锚点
+            detailPanel.setScale(z);      // 世界尺寸 ×z,相机绘制 ÷z → 屏幕尺寸恒定
+            // 世界坐标中映射到"屏幕右下角"的那个点(锚点固定于此,面板向左上展开)
+            detailPanel.setPosition(
+                cam.position.x + (STAGE_W / 2f) * z - w,
+                cam.position.y - (STAGE_H / 2f) * z);
+        }
+
         if (dnd.isDragging()) {
             Actor a = dnd.getDragActor();
             if (a != null) {
@@ -773,5 +885,5 @@ public class GameScreen implements Screen {
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-    @Override public void dispose() { worldStage.dispose(); uiStage.dispose(); }
+    @Override public void dispose() { worldStage.dispose(); uiStage.dispose(); if (ringSr != null) ringSr.dispose(); }
 }

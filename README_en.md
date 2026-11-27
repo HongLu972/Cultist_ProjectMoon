@@ -1,6 +1,6 @@
 [English](./README_en.md) | [中文](./README.md)
 
-# Cultist Simulator (Project Moon Mod) – Data & System API Documentation v1.0.0-alpha.5
+# Cultist Simulator (Project Moon Mod) – Data & System API Documentation v1.0.0-beta.3
 
 This game is built on a **purely data-driven** architecture. By modifying JSON files, you can completely rewrite the story, adjust numerical values, add new cards, or even create large-scale story mods—all without touching a single line of Java code. **Additionally, the game features a built-in visual Mod Editor, allowing you to easily create your own mods without writing any code!**
 
@@ -63,6 +63,7 @@ Defines the permanent action windows available to the player.
 ```json
 [ { "id": "work", "icon": "img/icons/work_hammer.png" }, { "id": "study" } ]
 ```
+*(The verb's icon is shown on its map token; if no icon is defined, the token falls back to auto-fitted text.)*
 
 ---
 
@@ -115,6 +116,21 @@ Action trees consist of multiple nodes. All nodes support `"onSuccess": [...]` a
 *   `{"type": "trigger", "event": "next_event"}`: Triggers another event.
 *   `{"type": "end_game", "ending": "poverty"}`: Ends the game.
 
+#### Random Nodes
+Weights don't need to sum to 100 — the engine normalizes automatically.
+*   `{"type": "random_create", "options": [{"target": "eye", "weight": 70}, {"target": "passion", "weight": 30}]}`: Randomly creates one card by weight.
+*   `{"type": "random_do", "options": [{"weight": 1, "action": {"type": "create", "target": "eye", "amount": 1}}, {"weight": 3, "action": {"type": "chance", "percent": 50}}]}`: Randomly executes one nested action tree by weight.
+*   `{"type": "random_trigger", "options": [{"event": "found_person", "weight": 1}, {"event": "nothing", "weight": 99}]}`: Randomly triggers one event by weight.
+
+#### State & Narrative
+*   `{"type": "transform", "target": "illness", "to": "health", "amount": 1}`: **Transforms cards in place** (`amount: -1` converts every match). Slots first, then unlocked cards on the table. Preserves stack counts, temp aspects, and slot positions.
+*   `{"type": "record", "text": "The lights went out."}`: Writes a line into the review chronicle (visible on the ending screen).
+*   `{"type": "set_flag", "flag": "met_carmen", "value": 1}`: Sets a story flag (saved with the game).
+*   `{"type": "check_flag", "flag": "met_carmen", "value": 1}`: Succeeds if the flag value is ≥ the given value.
+*   `{"type": "check_count", "target": "evidence", "amount": 3}`: Succeeds if the total count of a card (by id, including cards in slots, stack-aware) on the field is ≥ amount.
+*   `{"type": "destroy", "target": "curse", "amount": 1}`: Destroys up to `amount` unlocked loose cards on the table matching the target aspect (or id) (`amount: -1` = all; cards inside windows/slots are untouched; fails if nothing was destroyed).
+*   `{"type": "stop_event", "event": "time_A"}`: Stops every run of the given event (background loops, delayed triggers, running windows); succeeds if anything was stopped.
+
 #### System Commands
 *   `{"type": "unlock_verb", "verb": "study"}`: Unlocks a new permanent action window.
 *   `{"type": "play_music", "track": "audio/bgm_boss.ogg"}`: Switches background music.
@@ -124,6 +140,10 @@ Action trees consist of multiple nodes. All nodes support `"onSuccess": [...]` a
 
 ## 🪦 5. Ending System (`endings.json`)
 Defines various endings and **"Cinematic ending credits review subtitles."**
+
+Ending text (`ending.<id>.desc` and review subtitles) supports **placeholders** replaced with table counts at resolution:
+*   `{casualty}` / `{readiness}` / `{evacuation}` / `{evidence}` → count of the matching card.
+*   `{record_count}` → number of chronicle records.
 
 ---
 
@@ -150,7 +170,7 @@ Options presented to the player on the new game screen.
 ## 🛠️ 9. Engine Advanced Features
 
 ### 💾 9.1 Multi-Save System
-*   **Shortcuts**: Press `Esc` in-game to open the menu for saving/loading. (Press `Space` to purely pause/resume time).
+*   **Shortcuts**: Press `Esc` in-game (or click ☰ top-left) to open the **full-screen system menu** (resume / save / load / mod manager / volume). (Press `Space` to purely pause/resume time).
 *   **Menu Operations**: Includes 20 independent save slots with **custom naming** (e.g., "First Despair").
 *   **Save Location**: Stored in `saves/slot_1.json` ~ `slot_20.json`. Perfectly restores card coordinates, event timers, slot data, and the review chronicle.
 

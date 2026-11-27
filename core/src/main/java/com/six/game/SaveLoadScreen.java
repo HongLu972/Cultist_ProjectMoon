@@ -36,7 +36,7 @@ public class SaveLoadScreen implements Screen {
         root.setFillParent(true);
         stage.addActor(root);
 
-        String titleText = mode == Mode.SAVE ? "保存游戏" : "读取游戏";
+        String titleText = ui.texts.get(mode == Mode.SAVE ? "ui.save_title" : "ui.load_title", mode == Mode.SAVE ? "保存游戏" : "读取游戏");
         root.add(new Label(titleText, ui.labelStyle(Color.GOLD))).padBottom(20).row();
 
         listTable = new Table();
@@ -44,7 +44,7 @@ public class SaveLoadScreen implements Screen {
         scroll.setFadeScrollBars(false);
         root.add(scroll).size(850, 400).padBottom(20).row();
 
-        TextButton backBtn = new TextButton("返回", ui.buttonStyle());
+        TextButton backBtn = new TextButton(ui.texts.get("ui.back", "返回"), ui.buttonStyle());
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -61,7 +61,7 @@ public class SaveLoadScreen implements Screen {
         for (int i = 1; i <= 20; i++) {
             final int slot = i;
             String saveName = getSaveName(slot);
-            boolean exists = !saveName.equals("空存档") && !saveName.equals("损坏的存档");
+            boolean exists = !saveName.equals(ui.texts.get("ui.save_empty", "空存档")) && !saveName.equals(ui.texts.get("ui.save_broken", "损坏的存档"));
 
             String btnText = slot + " : " + saveName;
             TextButton slotBtn = new TextButton(btnText, ui.buttonStyle());
@@ -95,26 +95,26 @@ public class SaveLoadScreen implements Screen {
         window.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
         window.pad(20);
 
-        window.add(new Label("存档命名 (槽位 " + slot + ")", ui.labelStyle(Color.GOLD))).padBottom(20).row();
+        window.add(new Label(String.format(ui.texts.get("ui.save_naming", "存档命名 (槽位 %s)"), slot), ui.labelStyle(Color.GOLD))).padBottom(20).row();
 
         TextField input = new TextField("", ui.textFieldStyle());
-        input.setMessageText("输入存档备注...");
+        input.setMessageText(ui.texts.get("ui.save_hint", "输入存档备注..."));
         window.add(input).width(300).height(40).padBottom(20).row();
 
         Table btnRow = new Table();
-        TextButton confirmBtn = new TextButton("保存", ui.buttonStyle());
+        TextButton confirmBtn = new TextButton(ui.texts.get("ui.save_confirm", "保存"), ui.buttonStyle());
         confirmBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 String name = input.getText().trim();
-                if (name.isEmpty()) name = "未命名存档";
+                if (name.isEmpty()) name = ui.texts.get("ui.save_unnamed", "未命名存档");
                 saveToSlot(slot, name);
                 overlay.remove();
                 onBack.run();
             }
         });
 
-        TextButton cancelBtn = new TextButton("取消", ui.buttonStyle());
+        TextButton cancelBtn = new TextButton(ui.texts.get("ui.cancel", "取消"), ui.buttonStyle());
         cancelBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -149,7 +149,7 @@ public class SaveLoadScreen implements Screen {
 
     private String getSaveName(int slot) {
         FileHandle file = Gdx.files.local("saves/slot_" + slot + ".json");
-        if (!file.exists()) return "空存档";
+        if (!file.exists()) return ui.texts.get("ui.save_empty", "空存档");
         try {
             String encrypted = file.readString("UTF-8");
             String rawJson = SaveCrypt.decrypt(encrypted);
@@ -159,9 +159,9 @@ public class SaveLoadScreen implements Screen {
                 return data.saveName;
             }
         } catch (Exception e) {
-            return "损坏的存档";
+            return ui.texts.get("ui.save_broken", "损坏的存档");
         }
-        return "未命名存档";
+        return ui.texts.get("ui.save_unnamed", "未命名存档");
     }
 
     private void loadFromSlot(int slot) {
@@ -183,7 +183,7 @@ public class SaveLoadScreen implements Screen {
             ((Main) Gdx.app.getApplicationListener()).loadFromData(data);
         } catch (Exception e) {
             e.printStackTrace();
-            showErrorDialog("存档已损坏，无法读取喵！\n" + e.getMessage());
+            showErrorDialog(ui.texts.get("ui.save_error", "存档已损坏，无法读取喵！\n") + e.getMessage());
         }
     }
 
@@ -201,7 +201,7 @@ public class SaveLoadScreen implements Screen {
         label.setWrap(true);
         window.add(label).width(400).padBottom(20).row();
 
-        TextButton closeBtn = new TextButton("确定", ui.buttonStyle());
+        TextButton closeBtn = new TextButton(ui.texts.get("ui.ok", "确定"), ui.buttonStyle());
         closeBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {

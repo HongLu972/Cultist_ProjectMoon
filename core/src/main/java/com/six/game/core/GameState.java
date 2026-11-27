@@ -33,6 +33,8 @@ public class GameState {
     public final List<Situation> situations = new ArrayList<>();
     public final List<BackgroundRun> backgrounds = new ArrayList<>();
     public Random random = new Random();
+    /** 剧情旗标：set_flag/check_flag 动作读写，随存档保存。 */
+    public final java.util.HashMap<String, Integer> storyFlags = new java.util.HashMap<>();
     public String ending;
     public float worldWidth = 3200f, worldHeight = 1800f;
 
@@ -113,6 +115,7 @@ public class GameState {
             }
             data.situations.add(sd);
         }
+        data.storyFlags = new java.util.HashMap<>(this.storyFlags);
         return data;
     }
 
@@ -123,6 +126,9 @@ public class GameState {
         this.totalTime = data.chronicle.totalPlayTime;
         this.chronicle = data.chronicle;
         this.ending = data.ending;
+
+        this.storyFlags.clear();
+        if (data.storyFlags != null) this.storyFlags.putAll(data.storyFlags);
 
         java.util.Map<String, ElementInstance> saveIdMap = new java.util.HashMap<>();
 
@@ -220,6 +226,35 @@ public class GameState {
     /** 旧存档 id 兼容：把历史拼写错误 insitute 映射为 institute（覆盖事件 id/situation id 及其组合键）。 */
     private static String fixLegacyId(String id) {
         return (id != null && id.contains("insitute")) ? id.replace("insitute", "institute") : id;
+    }
+
+    /** transform 动作支撑：把一张牌原位变成另一种卡（保留堆叠数/临时词条/位置/槽位与锁定）。 */
+    public ElementInstance transformCard(ElementInstance oldCard, Element newDef) {
+        ElementInstance fresh = new ElementInstance(newDef, newDef.id + "#" + (nextCardId++));
+        fresh.count = oldCard.count;
+        fresh.tempAspects = new java.util.HashMap<>(oldCard.tempAspects);
+        int idx = cards.indexOf(oldCard);
+        if (idx >= 0) {
+            cards.set(idx, fresh);
+        } else {
+            cards.add(fresh);
+        }
+        // 原位替换：槽里的牌换引用，桌面上的牌换坐标
+        boolean replaced = false;
+        for (Situation s : situations) {
+            for (int i = 0; i < s.slots.size(); i++) {
+                if (s.slots.get(i).content == oldCard) {
+                    s.slots.get(i).content = fresh;
+                    fresh.locked = oldCard.locked;
+                    replaced = true;
+                }
+            }
+        }
+        if (!replaced) {
+            fresh.x = oldCard.x;
+            fresh.y = oldCard.y;
+        }
+        return fresh;
     }
 
     public Situation unlockVerb(String verbId) {
@@ -388,6 +423,43 @@ public class GameState {
 
     private static float clamp(float v, float lo, float hi) {
         return Math.max(lo, Math.min(hi, v));
+    }
+
+    /** 停止指定事件的一切运行:后台循环/延时触发 + 正在跑的局面窗口。返回停掉的数量。 */
+    public int stopEvent(String eventId) {
+        EventDef e = events.get(eventId);
+        if (e == null) return 0;
+        int n = 0;
+        for (BackgroundRun r : new ArrayList<>(backgrounds)) {
+            if (r.event == e) {
+                backgrounds.remove(r);
+                n++;
+            }
+        }
+        for (Situation s : new ArrayList<>(situations)) {
+            if (s.running == e) {
+                s.stop();
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** 摧毁桌面上最多 amount 张带 targetAspect 词条的未锁定散牌(-1=全部,按堆叠计数)。行动窗/事件槽里的牌不受影响。返回摧毁张数。 */
+    public int destroyCards(String targetAspect, int amount) {
+        int destroyed = 0;
+        int left = (amount < 0) ? Integer.MAX_VALUE : amount;
+        for (ElementInstance c : new ArrayList<>(cards)) {
+            if (left <= 0) break;
+            if (c.locked || isInAnySlot(c)) continue;
+            if (!ActionContext.hasAspect(c, targetAspect)) continue;
+            int take = Math.min(left, c.count);
+            c.count -= take;
+            left -= take;
+            destroyed += take;
+            if (c.count <= 0) removeCard(c);
+        }
+        return destroyed;
     }
 
     public void startAuto(String eventId) {

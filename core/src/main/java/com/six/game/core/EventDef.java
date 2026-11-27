@@ -14,6 +14,8 @@ public class EventDef {
     public String forceDrainAspect;
 
     public String id;
+    /** (可选) 图标路径:用作地图小图标的图案(verbs.json 的行动也支持同名字段)。 */
+    public String icon;
     /**
      * 启动方式:
      *   manual  玩家把牌放进行动槽(或双击带 use 触发器的牌)触发

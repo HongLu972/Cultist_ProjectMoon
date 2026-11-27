@@ -16,10 +16,6 @@ public class Situation {
     public float x, y;
     public boolean finished;
 
-    // ---- 以下为 UI 专用瞬态状态（密教式图标/面板），不参与存档 ----
-    /** true = 展开成完整面板; false = 收成地图小图标。 */
-    public boolean uiExpanded;
-
     private final GameState state;
     private final boolean hasCarrier;
 
@@ -132,6 +128,12 @@ public class Situation {
         running = null;
         timer = 0f;
         if (released) state.placeNewCards(x, y);
+    }
+
+    /** 强制停止当前运行(不再结算动作):事件窗直接关闭,行动窗重置回待机。供 stop_event 动作调用。 */
+    public void stop() {
+        if (eventWindow) finish();
+        else reset();
     }
 
     private void finish() {

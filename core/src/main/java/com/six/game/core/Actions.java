@@ -327,4 +327,108 @@ public final class Actions {
             return false;
         }
     }
+
+    /**
+     * "transform":把最多 amount 张带 target 词条(或 id)的牌变成 to 卡牌。
+     * 保留堆叠数/临时词条/位置与槽位锁定;窗口槽优先,桌面未锁定牌次之。
+     * amount 填 -1 表示全部变形。一张都找不到则失败。
+     */
+    public static class Transform extends Action {
+        public String target;
+        public String to;
+        public int amount = 1;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            Element toDef = ctx.state.library.element(to);
+            List<ElementInstance> found = new ArrayList<>();
+            if (ctx.situation != null) {
+                for (Slot s : ctx.situation.slots) {
+                    if (s.content != null && ActionContext.hasAspect(s.content, target) && !found.contains(s.content)) {
+                        found.add(s.content);
+                    }
+                }
+            }
+            for (ElementInstance c : ctx.state.cards) {
+                if (c.locked) continue;
+                if (ActionContext.hasAspect(c, target) && !found.contains(c)) found.add(c);
+            }
+            if (found.isEmpty()) return false;
+            int n = amount < 0 ? found.size() : Math.min(amount, found.size());
+            for (int i = 0; i < n; i++) {
+                ctx.state.transformCard(found.get(i), toDef);
+            }
+            return true;
+        }
+    }
+
+    /** "record":往编年史里写一条记录(报幕字幕素材)。永远成功。 */
+    public static class Record extends Action {
+        public String text;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            ctx.state.chronicle.addRecord(ctx.state.totalTime, text == null ? "" : text);
+            return true;
+        }
+    }
+
+    /** "set_flag":设置全局剧情旗标(随存档保存)。永远成功。 */
+    public static class SetFlag extends Action {
+        public String flag;
+        public int value = 1;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            ctx.state.storyFlags.put(flag, value);
+            return true;
+        }
+    }
+
+    /** "check_flag":检查全局剧情旗标是否 &gt;= value。 */
+    public static class CheckFlag extends Action {
+        public String flag;
+        public int value = 1;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            return ctx.state.storyFlags.getOrDefault(flag, 0) >= value;
+        }
+    }
+
+    /** "check_count":检查场上某卡牌(按 id,含槽内,按堆叠计数)总数是否 &gt;= amount。 */
+    public static class CheckCount extends Action {
+        public String target;
+        public int amount = 1;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            return ctx.state.count(target) >= amount;
+        }
+    }
+
+    /**
+     * "destroy":摧毁桌面上带 target 词条(或 id)的未锁定散牌 amount 张(-1=全部,按堆叠计数)。
+     * 行动窗/事件槽里的牌不受影响。一张都没摧到(或不够数)则失败。
+     */
+    public static class Destroy extends Action {
+        public String target;
+        public int amount = 1;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            int destroyed = ctx.state.destroyCards(target, amount);
+            return amount < 0 ? destroyed > 0 : destroyed >= amount;
+        }
+    }
+
+    /** "stop_event":停止指定事件的一切运行(后台循环、延时触发、正在跑的窗口)。停到了就算成功。 */
+    public static class StopEvent extends Action {
+        public String event;
+
+        @Override
+        public boolean execute(ActionContext ctx) {
+            return ctx.state.stopEvent(event) > 0;
+        }
+    }
 }

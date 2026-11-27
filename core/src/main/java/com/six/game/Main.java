@@ -22,6 +22,15 @@ public class Main extends Game {
         ContentLoader loader = new ContentLoader();
         config = loader.loadConfig(ModManager.loadWithMods("data/config.json", "config.json"));
 
+        // 应用 config.json 的窗口标题（窗口已创建，反射调用 LWJGL3 的 setTitle，避免 core 依赖桌面后端）
+        if (config.windowTitle != null && !config.windowTitle.isEmpty()) {
+            try {
+                Object graphics = Gdx.graphics;
+                Object window = graphics.getClass().getMethod("getWindow").invoke(graphics);
+                window.getClass().getMethod("setTitle", String.class).invoke(window, config.windowTitle);
+            } catch (Throwable ignored) { /* 非 LWJGL3 后端时忽略 */ }
+        }
+
         String elementsJson   = ModManager.loadWithMods("data/elements.json", "elements.json");
         String verbsJson      = ModManager.loadWithMods("data/verbs.json", "verbs.json");
         String eventsJson     = ModManager.loadWithMods("data/events.json", "events.json");
@@ -34,6 +43,9 @@ public class Main extends Game {
         events = loader.loadEvents(eventsJson, library);
         loader.validate(library, events);
         scenarios = loader.loadScenarios(scenariosJson, library, events);
+
+        // 模组脚本（mods/<模组>/scripts/ 下的 .jar 或 .java）：所有数据加载完成后执行
+        ModScriptLoader.runScripts(library, events, config);
 
         String textsJson = ModManager.loadWithMods("data/text_" + config.language + ".json", "text_" + config.language + ".json");
         TextBook texts = loader.loadTexts(textsJson);

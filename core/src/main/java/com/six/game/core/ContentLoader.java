@@ -33,6 +33,16 @@ public class ContentLoader {
         json.addClassTag("modify_aspects", Actions.ModifyAspects.class);
         json.addClassTag("random_create", Actions.RandomCreate.class);
         json.addClassTag("random_do", Actions.RandomDo.class);
+        // 👇 补漏：游戏加载路径此前没有 random_trigger，含该动作的事件会反序列化失败
+        json.addClassTag("random_trigger", Actions.RandomTrigger.class);
+        // 👇 新动作：变形 / 编年史记录 / 剧情旗标
+        json.addClassTag("transform", Actions.Transform.class);
+        json.addClassTag("record", Actions.Record.class);
+        json.addClassTag("set_flag", Actions.SetFlag.class);
+        json.addClassTag("check_flag", Actions.CheckFlag.class);
+        json.addClassTag("check_count", Actions.CheckCount.class);
+        json.addClassTag("destroy", Actions.Destroy.class);
+        json.addClassTag("stop_event", Actions.StopEvent.class);
 
         // 泛型类型声明
         json.setElementType(Element.class, "aspects", Integer.class);
@@ -63,6 +73,7 @@ public class ContentLoader {
 
     @SuppressWarnings("unchecked")
     public Library loadLibrary(String text) {
+        text = JsonSanitizer.clean(text); // 支持注释喵
         ArrayList<Element> list = json.fromJson(ArrayList.class, Element.class, text);
         Library lib = new Library();
         for (Element e : list) {
@@ -75,6 +86,7 @@ public class ContentLoader {
 
     @SuppressWarnings("unchecked")
     public void loadVerbs(String text, Library library) {
+        text = JsonSanitizer.clean(text);
         ArrayList<VerbDef> list = json.fromJson(ArrayList.class, VerbDef.class, text);
         for (VerbDef v : list) {
             if (v.id == null || v.id.isEmpty()) throw new IllegalStateException("有行动缺少 id");
@@ -86,6 +98,7 @@ public class ContentLoader {
 
     @SuppressWarnings("unchecked")
     public void loadEndings(String text, Library library) {
+        text = JsonSanitizer.clean(text);
         json.setTypeName(null); // 结局的 type 字段（BE/GE）会和多态冲突
         ArrayList<EndingDef> list;
         try {
@@ -104,6 +117,7 @@ public class ContentLoader {
 
     @SuppressWarnings("unchecked")
     public EventBook loadEvents(String text, Library library) {
+        text = JsonSanitizer.clean(text);
         ArrayList<EventDef> list;
         try {
             list = json.fromJson(ArrayList.class, EventDef.class, text);
@@ -203,6 +217,7 @@ public class ContentLoader {
 
     @SuppressWarnings("unchecked")
     public ArrayList<ScenarioDef> loadScenarios(String text, Library lib, EventBook events) {
+        text = JsonSanitizer.clean(text);
         ArrayList<ScenarioDef> list = json.fromJson(ArrayList.class, ScenarioDef.class, text);
 
         // 👇 核心修复：使用 LinkedHashMap 去重，保持原有顺序，且后加载的覆盖先加载的
@@ -242,11 +257,13 @@ public class ContentLoader {
 
     @SuppressWarnings("unchecked")
     public TextBook loadTexts(String text) {
+        text = JsonSanitizer.clean(text);
         HashMap<String, String> map = json.fromJson(HashMap.class, String.class, text);
         return new TextBook(map);
     }
 
     public GameConfig loadConfig(String text) {
+        text = JsonSanitizer.clean(text);
         return json.fromJson(GameConfig.class, text);
     }
 }

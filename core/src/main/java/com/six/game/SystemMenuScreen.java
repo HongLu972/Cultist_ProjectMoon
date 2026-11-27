@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.SelectBox;
 import com.badlogic.gdx.scenes.scene2d.ui.Slider;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
@@ -24,6 +25,9 @@ public class SystemMenuScreen implements Screen {
     private final GameState state;
     private final GameScreen game;
     private final Runnable onExitToMenu;
+    private Table mainWindow;
+    private Table settingsWindow;
+    private Label langHint;
 
     public SystemMenuScreen(Ui ui, GameState state, GameScreen game, Runnable onExitToMenu) {
         this.ui = ui;
@@ -40,17 +44,18 @@ public class SystemMenuScreen implements Screen {
         window.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
         window.pad(28);
 
-        window.add(new Label("系统菜单", ui.labelStyle(Color.GOLD))).padBottom(24).row();
+        window.add(new Label(ui.texts.get("ui.menu_title", "系统菜单"), ui.labelStyle(Color.GOLD))).padBottom(24).row();
 
-        window.add(menuBtn("▶  返回游戏", this::backToGame)).width(300).height(52).padBottom(12).row();
-        window.add(menuBtn("💾 保存游戏", this::openSave)).width(300).height(52).padBottom(12).row();
-        window.add(menuBtn("📂 读取游戏", this::openLoad)).width(300).height(52).padBottom(12).row();
-        window.add(menuBtn("🛠️ 打开 Mod 管理器", this::openMods)).width(300).height(52).padBottom(12).row();
-        window.add(menuBtn("🏠 保存并回到主菜单", this::exitToMenu)).width(300).height(52).padBottom(20).row();
+        window.add(menuBtn(ui.texts.get("ui.menu_resume", "▶  返回游戏"), this::backToGame)).width(300).height(52).padBottom(12).row();
+        window.add(menuBtn(ui.texts.get("ui.menu_save", "💾 保存游戏"), this::openSave)).width(300).height(52).padBottom(12).row();
+        window.add(menuBtn(ui.texts.get("ui.menu_load", "📂 读取游戏"), this::openLoad)).width(300).height(52).padBottom(12).row();
+        window.add(menuBtn(ui.texts.get("ui.menu_mods", "🛠️ 打开 Mod 管理器"), this::openMods)).width(300).height(52).padBottom(12).row();
+        window.add(menuBtn(ui.texts.get("ui.settings_title", "⚙ 设置"), this::openSettings)).width(300).height(52).padBottom(12).row();
+        window.add(menuBtn(ui.texts.get("ui.menu_exit", "🏠 保存并回到主菜单"), this::exitToMenu)).width(300).height(52).padBottom(20).row();
 
         // 音量行：实时调节
         Table volRow = new Table();
-        Label volLabel = new Label("音量", ui.labelStyle(Color.WHITE));
+        Label volLabel = new Label(ui.texts.get("ui.menu_volume", "音量"), ui.labelStyle(Color.WHITE));
         volRow.add(volLabel).width(90).left().padRight(10);
         Slider volSlider = new Slider(0f, 1f, 0.01f, false, ui.sliderStyle());
         volSlider.setValue(AudioManager.getInstance().getVolume());
@@ -63,7 +68,36 @@ public class SystemMenuScreen implements Screen {
         volRow.add(volSlider).width(190).height(30);
         window.add(volRow).row();
 
-        root.add(window);
+        mainWindow = window;
+        root.add(mainWindow).row();
+
+        // --- 设置子界面(目前只有语言) ---
+        settingsWindow = new Table();
+        settingsWindow.setBackground(ui.rect(new Color(0.2f, 0.16f, 0.26f, 1f)));
+        settingsWindow.pad(28);
+        settingsWindow.add(new Label(ui.texts.get("ui.settings_title", "⚙ 设置"), ui.labelStyle(Color.GOLD))).padBottom(24).row();
+
+        Table langRow = new Table();
+        langRow.add(new Label(ui.texts.get("ui.settings_language", "语言"), ui.labelStyle(Color.WHITE))).width(90).left().padRight(10);
+        SelectBox<String> langBox = new SelectBox<>(ui.selectBoxStyle());
+        langBox.setItems("中文", "English");
+        String cur = ((Main) Gdx.app.getApplicationListener()).config.language;
+        langBox.setSelected("en".equals(cur) ? "English" : "中文");
+        langHint = new Label(ui.texts.get("ui.settings_hint", "重启游戏后生效喵"), ui.labelStyle(Color.SALMON));
+        langHint.setVisible(false);
+        langBox.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                saveLanguage("English".equals(langBox.getSelected()) ? "en" : "zh");
+                langHint.setVisible(true);
+            }
+        });
+        langRow.add(langBox).width(190).height(38);
+        settingsWindow.add(langRow).padBottom(18).row();
+        settingsWindow.add(langHint).padBottom(18).row();
+        settingsWindow.add(menuBtn(ui.texts.get("ui.back", "返回"), this::showMainMenuWindow)).width(300).height(52).row();
+        settingsWindow.setVisible(false);
+        root.add(settingsWindow);
 
         // ESC 也能返回游戏
         stage.addListener(new InputListener() {
@@ -105,6 +139,30 @@ public class SystemMenuScreen implements Screen {
 
     private void openMods() {
         ((com.badlogic.gdx.Game) Gdx.app.getApplicationListener()).setScreen(new ModEditorScreen(ui));
+    }
+
+    private void openSettings() {
+        mainWindow.setVisible(false);
+        settingsWindow.setVisible(true);
+    }
+
+    private void showMainMenuWindow() {
+        settingsWindow.setVisible(false);
+        mainWindow.setVisible(true);
+    }
+
+    /** 语言偏好写回 data/config.json(ModManager 外部优先读取的位置),下次启动生效。 */
+    private void saveLanguage(String lang) {
+        try {
+            Main main = (Main) Gdx.app.getApplicationListener();
+            main.config.language = lang;
+            com.badlogic.gdx.utils.Json json = new com.badlogic.gdx.utils.Json();
+            json.setOutputType(com.badlogic.gdx.utils.JsonWriter.OutputType.json);
+            Gdx.files.local("data/").mkdirs();
+            Gdx.files.local("data/config.json").writeString(json.prettyPrint(main.config), false, "UTF-8");
+        } catch (Throwable ignored) {
+            // 只读目录等场景写不进就算了,仅本次会话不保存
+        }
     }
 
     private void exitToMenu() {

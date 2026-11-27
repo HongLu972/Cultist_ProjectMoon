@@ -28,6 +28,6 @@ public class BackgroundPanel extends Table {
     public void update(GameState.BackgroundRun run) {
         String name = ui.texts.get("event." + run.event.id + ".name", run.event.id);
         int secs = (int) Math.ceil(Math.max(0f, run.timer));
-        timerLabel.setText(name + "\n剩余: " + secs + " 秒");
+        timerLabel.setText(name + "\n" + ui.texts.get("ui.remaining", "剩余") + ": " + secs + " " + ui.texts.get("ui.seconds", "秒"));
     }
 }

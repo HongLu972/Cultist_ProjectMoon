@@ -31,6 +31,8 @@ public class SaveData {
     public List<CardData> cards = new ArrayList<>();
     public List<SituationData> situations = new ArrayList<>();
     public Chronicle chronicle = new Chronicle();
+    /** 剧情旗标（set_flag/check_flag），可为 null（旧档兼容）。 */
+    public java.util.HashMap<String, Integer> storyFlags;
     public String ending; // 记录结局状态
     public String bgmPath; // 记录当前播放的BGM
 }

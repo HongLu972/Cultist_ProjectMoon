@@ -86,6 +86,15 @@ public class ModEditorScreen implements Screen {
         TextButton btnImport = createActionBtn(t("📂 导入模组", "📂 Import Mod"), this::importMod);
         navBar.add(btnImport).padRight(10);
 
+        TextButton btnOpenFolder = createActionBtn(t("📁 打开 Mod 文件夹", "📁 Open Mod Folder"), () -> {
+            try {
+                java.io.File mods = new java.io.File("mods");
+                if (!mods.isDirectory()) mods = new java.io.File("../mods");
+                if (mods.isDirectory()) java.awt.Desktop.getDesktop().open(mods);
+            } catch (Throwable ignored) { }
+        });
+        navBar.add(btnOpenFolder).padRight(10);
+
         navGroup.add(btnCard, btnEvent, btnEnding, btnVerb, btnScenario, btnConfig);
 
         navBar.add(new Label(t("当前模组名:", "Current Mod Name:"), ui.labelStyle(Color.WHITE))).padLeft(10).padRight(5);
@@ -243,32 +252,32 @@ public class ModEditorScreen implements Screen {
                         HashMap<String, String> tempEnMap = new HashMap<>();
 
                         FileHandle elFile = new FileHandle(selectedDir.getAbsolutePath() + "/elements.json");
-                        if (elFile.exists()) tempEl.addAll(json.fromJson(ArrayList.class, Element.class, elFile.readString("UTF-8")));
+                        if (elFile.exists()) tempEl.addAll(json.fromJson(ArrayList.class, Element.class, JsonSanitizer.clean(elFile.readString("UTF-8"))));
 
                         FileHandle evFile = new FileHandle(selectedDir.getAbsolutePath() + "/events.json");
-                        if (evFile.exists()) tempEv.addAll(json.fromJson(ArrayList.class, EventDef.class, evFile.readString("UTF-8")));
+                        if (evFile.exists()) tempEv.addAll(json.fromJson(ArrayList.class, EventDef.class, JsonSanitizer.clean(evFile.readString("UTF-8"))));
 
                         FileHandle enFile = new FileHandle(selectedDir.getAbsolutePath() + "/endings.json");
                         if (enFile.exists()) {
                             json.setTypeName(null);
                             try {
-                                tempEn.addAll(json.fromJson(ArrayList.class, EndingDef.class, enFile.readString("UTF-8")));
+                                tempEn.addAll(json.fromJson(ArrayList.class, EndingDef.class, JsonSanitizer.clean(enFile.readString("UTF-8"))));
                             } finally {
                                 json.setTypeName("type");
                             }
                         }
 
                         FileHandle vbFile = new FileHandle(selectedDir.getAbsolutePath() + "/verbs.json");
-                        if (vbFile.exists()) tempVb.addAll(json.fromJson(ArrayList.class, VerbDef.class, vbFile.readString("UTF-8")));
+                        if (vbFile.exists()) tempVb.addAll(json.fromJson(ArrayList.class, VerbDef.class, JsonSanitizer.clean(vbFile.readString("UTF-8"))));
 
                         FileHandle scFile = new FileHandle(selectedDir.getAbsolutePath() + "/scenarios.json");
-                        if (scFile.exists()) tempSc.addAll(json.fromJson(ArrayList.class, ScenarioDef.class, scFile.readString("UTF-8")));
+                        if (scFile.exists()) tempSc.addAll(json.fromJson(ArrayList.class, ScenarioDef.class, JsonSanitizer.clean(scFile.readString("UTF-8"))));
 
                         FileHandle zhFile = new FileHandle(selectedDir.getAbsolutePath() + "/text_zh.json");
-                        if (zhFile.exists()) tempZh.putAll(json.fromJson(HashMap.class, String.class, zhFile.readString("UTF-8")));
+                        if (zhFile.exists()) tempZh.putAll(json.fromJson(HashMap.class, String.class, JsonSanitizer.clean(zhFile.readString("UTF-8"))));
 
                         FileHandle enTextFile = new FileHandle(selectedDir.getAbsolutePath() + "/text_en.json");
-                        if (enTextFile.exists()) tempEnMap.putAll(json.fromJson(HashMap.class, String.class, enTextFile.readString("UTF-8")));
+                        if (enTextFile.exists()) tempEnMap.putAll(json.fromJson(HashMap.class, String.class, JsonSanitizer.clean(enTextFile.readString("UTF-8"))));
 
                         currentModName = dirName;
                         modNameField.setText(currentModName);
@@ -758,7 +767,7 @@ public class ModEditorScreen implements Screen {
         block.pad(5).left().top();
 
         SelectBox<String> typeBox = new SelectBox<>(ui.selectBoxStyle());
-        typeBox.setItems("create", "consume", "drain", "check", "chance", "trigger", "end_game", "unlock_verb", "play_music", "modify_aspects", "random_create", "random_trigger", "random_do");
+        typeBox.setItems("create", "consume", "drain", "check", "chance", "trigger", "end_game", "unlock_verb", "play_music", "modify_aspects", "random_create", "random_trigger", "random_do", "transform", "record", "set_flag", "check_flag", "check_count", "destroy", "stop_event");
         // 👈 核心修复 1：拉宽下拉框，防止 random_ 截断
         block.add(typeBox).width(180).padRight(10);
 
@@ -777,10 +786,10 @@ public class ModEditorScreen implements Screen {
             // 只有"已有动作的类型 = 当前选中的类型"时,才用它来预填界面
             Action ex = matchesType(currentExistingRef[0], tName) ? currentExistingRef[0] : null;
 
-            if (tName.equals("create")) {
+            if (tName.equals("create") || tName.equals("check_count")) {
                 TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("卡牌ID", "Card ID")); params.add(f).width(120);
                 TextField a = new TextField("1", ui.textFieldStyle()); a.setName("amount"); params.add(a).width(60);
-            } else if (tName.equals("consume") || tName.equals("drain")) {
+            } else if (tName.equals("consume") || tName.equals("drain") || tName.equals("destroy")) {
                 TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("词条", "Aspect")); params.add(f).width(120);
                 TextField a = new TextField("1", ui.textFieldStyle()); a.setName("amount"); params.add(a).width(60);
             } else if (tName.equals("chance")) {
@@ -789,7 +798,7 @@ public class ModEditorScreen implements Screen {
                 // 词条组:[词条][数量] 一行一个,下面有 [+ 词条] 按钮继续添加
                 Map<String, Integer> exAspects = ex instanceof Actions.Check ? ((Actions.Check) ex).aspects : null;
                 params.add(createAspectGroupBox("aspects", exAspects)).left();
-            } else if (tName.equals("trigger")) {
+            } else if (tName.equals("trigger") || tName.equals("stop_event")) {
                 TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("事件ID", "Event ID")); params.add(f).width(200);
             } else if (tName.equals("end_game")) {
                 TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("结局ID", "Ending ID")); params.add(f).width(200);
@@ -801,6 +810,15 @@ public class ModEditorScreen implements Screen {
                 TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("卡牌ID", "Card ID")); params.add(f).width(120).top().padRight(8);
                 Map<String, Integer> exAspects = ex instanceof Actions.ModifyAspects ? ((Actions.ModifyAspects) ex).aspects : null;
                 params.add(createAspectGroupBox("aspects", exAspects)).left();
+            } else if (tName.equals("transform")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("target"); f.setMessageText(t("旧卡牌/词条", "Old Card/Aspect")); params.add(f).width(120);
+                TextField n = new TextField("", ui.textFieldStyle()); n.setName("to"); n.setMessageText(t("新卡牌ID", "New Card ID")); params.add(n).width(120);
+                TextField a = new TextField("1", ui.textFieldStyle()); a.setName("amount"); a.setMessageText(t("-1=全部", "-1=All")); params.add(a).width(70);
+            } else if (tName.equals("record")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("text"); f.setMessageText(t("编年史文本", "Chronicle Text")); params.add(f).width(240);
+            } else if (tName.equals("set_flag") || tName.equals("check_flag")) {
+                TextField f = new TextField("", ui.textFieldStyle()); f.setName("flag"); f.setMessageText(t("旗标名", "Flag")); params.add(f).width(120);
+                TextField v = new TextField("1", ui.textFieldStyle()); v.setName("value"); v.setMessageText(t("值", "Value")); params.add(v).width(60);
             } else if (tName.equals("random_create") || tName.equals("random_trigger") || tName.equals("random_do")) {
                 Table optsBox = new Table();
                 optsBox.setName("optsBox");
@@ -856,6 +874,13 @@ public class ModEditorScreen implements Screen {
             else if (currentExistingRef[0] instanceof Actions.RandomCreate) typeBox.setSelected("random_create");
             else if (currentExistingRef[0] instanceof Actions.RandomTrigger) typeBox.setSelected("random_trigger");
             else if (currentExistingRef[0] instanceof Actions.RandomDo) typeBox.setSelected("random_do");
+            else if (currentExistingRef[0] instanceof Actions.Transform) typeBox.setSelected("transform");
+            else if (currentExistingRef[0] instanceof Actions.Record) typeBox.setSelected("record");
+            else if (currentExistingRef[0] instanceof Actions.SetFlag) typeBox.setSelected("set_flag");
+            else if (currentExistingRef[0] instanceof Actions.CheckFlag) typeBox.setSelected("check_flag");
+            else if (currentExistingRef[0] instanceof Actions.CheckCount) typeBox.setSelected("check_count");
+            else if (currentExistingRef[0] instanceof Actions.Destroy) typeBox.setSelected("destroy");
+            else if (currentExistingRef[0] instanceof Actions.StopEvent) typeBox.setSelected("stop_event");
             updateParams.run();
             // 把已有动作的成功/失败分支重建回界面(以前只选中类型,分支在保存时会丢)
             for (Action child : currentExistingRef[0].onSuccess) addActionBlock(successBox, child);
@@ -908,6 +933,13 @@ public class ModEditorScreen implements Screen {
             case "modify_aspects": return a instanceof Actions.ModifyAspects;
             case "random_create": return a instanceof Actions.RandomCreate;
             case "random_trigger": return a instanceof Actions.RandomTrigger;
+            case "transform": return a instanceof Actions.Transform;
+            case "record": return a instanceof Actions.Record;
+            case "set_flag": return a instanceof Actions.SetFlag;
+            case "check_flag": return a instanceof Actions.CheckFlag;
+            case "check_count": return a instanceof Actions.CheckCount;
+            case "destroy": return a instanceof Actions.Destroy;
+            case "stop_event": return a instanceof Actions.StopEvent;
             case "random_do": return a instanceof Actions.RandomDo;
             default: return false;
         }
@@ -939,6 +971,28 @@ public class ModEditorScreen implements Screen {
             setField(params, "target", ((Actions.PlayMusic) act).track);
         } else if (act instanceof Actions.ModifyAspects) {
             setField(params, "target", ((Actions.ModifyAspects) act).target);
+        } else if (act instanceof Actions.CheckCount) {
+            Actions.CheckCount x = (Actions.CheckCount) act;
+            setField(params, "target", x.target);
+            setField(params, "amount", String.valueOf(x.amount));
+        } else if (act instanceof Actions.Destroy) {
+            Actions.Destroy x = (Actions.Destroy) act;
+            setField(params, "target", x.target);
+            setField(params, "amount", String.valueOf(x.amount));
+        } else if (act instanceof Actions.StopEvent) {
+            setField(params, "target", ((Actions.StopEvent) act).event);
+        } else if (act instanceof Actions.Transform) {
+            setField(params, "target", ((Actions.Transform) act).target);
+            setField(params, "to", ((Actions.Transform) act).to);
+            setField(params, "amount", String.valueOf(((Actions.Transform) act).amount));
+        } else if (act instanceof Actions.Record) {
+            setField(params, "text", ((Actions.Record) act).text);
+        } else if (act instanceof Actions.SetFlag) {
+            setField(params, "flag", ((Actions.SetFlag) act).flag);
+            setField(params, "value", String.valueOf(((Actions.SetFlag) act).value));
+        } else if (act instanceof Actions.CheckFlag) {
+            setField(params, "flag", ((Actions.CheckFlag) act).flag);
+            setField(params, "value", String.valueOf(((Actions.CheckFlag) act).value));
         }
     }
 
@@ -1060,6 +1114,44 @@ public class ModEditorScreen implements Screen {
             c.target = ((TextField) block.findActor("target")).getText();
             c.aspects = parseAspectGroupBox(block.findActor("aspects"));
             a = c;
+        } else if (type.equals("transform")) {
+            Actions.Transform c = new Actions.Transform();
+            c.target = ((TextField) block.findActor("target")).getText();
+            c.to = ((TextField) block.findActor("to")).getText();
+            c.amount = parseInt(((TextField) block.findActor("amount")).getText());
+            a = c;
+        } else if (type.equals("record")) {
+            Actions.Record c = new Actions.Record();
+            c.text = ((TextField) block.findActor("text")).getText();
+            a = c;
+        } else if (type.equals("set_flag") || type.equals("check_flag")) {
+            String flagName = ((TextField) block.findActor("flag")).getText();
+            int flagValue = parseInt(((TextField) block.findActor("value")).getText());
+            if (type.equals("set_flag")) {
+                Actions.SetFlag c = new Actions.SetFlag();
+                c.flag = flagName;
+                c.value = flagValue;
+                a = c;
+            } else {
+                Actions.CheckFlag c = new Actions.CheckFlag();
+                c.flag = flagName;
+                c.value = flagValue;
+                a = c;
+            }
+        } else if (type.equals("check_count")) {
+            Actions.CheckCount c = new Actions.CheckCount();
+            c.target = ((TextField) block.findActor("target")).getText();
+            c.amount = parseInt(((TextField) block.findActor("amount")).getText());
+            a = c;
+        } else if (type.equals("destroy")) {
+            Actions.Destroy c = new Actions.Destroy();
+            c.target = ((TextField) block.findActor("target")).getText();
+            c.amount = parseInt(((TextField) block.findActor("amount")).getText());
+            a = c;
+        } else if (type.equals("stop_event")) {
+            Actions.StopEvent c = new Actions.StopEvent();
+            c.event = ((TextField) block.findActor("target")).getText();
+            a = c;
         } else if (type.equals("random_create")) {
             Actions.RandomCreate c = new Actions.RandomCreate();
             Table optsBox = block.findActor("optsBox");
@@ -1178,6 +1270,13 @@ public class ModEditorScreen implements Screen {
         json.addClassTag("random_create", Actions.RandomCreate.class);
         json.addClassTag("random_trigger", Actions.RandomTrigger.class);
         json.addClassTag("random_do", Actions.RandomDo.class);
+        json.addClassTag("transform", Actions.Transform.class);
+        json.addClassTag("record", Actions.Record.class);
+        json.addClassTag("set_flag", Actions.SetFlag.class);
+        json.addClassTag("check_flag", Actions.CheckFlag.class);
+        json.addClassTag("check_count", Actions.CheckCount.class);
+        json.addClassTag("destroy", Actions.Destroy.class);
+        json.addClassTag("stop_event", Actions.StopEvent.class);
 
         json.setElementType(Element.class, "aspects", Integer.class);
         json.setElementType(Element.class, "hiddenAspects", Integer.class);

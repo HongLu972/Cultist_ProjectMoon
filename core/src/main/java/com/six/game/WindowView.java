@@ -3,19 +3,26 @@ package com.six.game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-import com.badlogic.gdx.scenes.scene2d.utils.DragListener;
 import com.six.game.core.Situation;
 import com.six.game.core.Slot;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 局面详情面板:停靠在屏幕右侧的共享区域(密教式)。
+ * 位置由 GameScreen 每帧锚定(随缩放补偿),自身不可拖动;面板本体拦截点击,防止穿透到地图。
+ */
 public class WindowView extends Table {
+    /** 面板内容区固定宽度(总宽 = 360 + pad 8*2 = 376,约占 1280 宽屏的 29%)。 */
+    public static final float CONTENT_W = 360f;
+
     private static final Color WINDOW = new Color(0.20f, 0.16f, 0.26f, 1f);
     private static final Color EVENT_WINDOW = new Color(0.16f, 0.20f, 0.26f, 1f);
     private static final Color HEADER_COLOR = new Color(0.28f, 0.22f, 0.35f, 1f); // 标题栏颜色
@@ -23,8 +30,9 @@ public class WindowView extends Table {
     public final Situation situation;
     public final List<SlotActor> slotActors = new ArrayList<>();
     public final Label titleLabel;
-    public final Table header; // 新增：暴露标题栏，专门用来拖拽
+    public final Table header; // 暴露标题栏(点击可弹出信息卡)
     private final Ui ui;
+    private final Label descLabel;
     private final Label status;
     private final TextButton startButton;
 
@@ -32,45 +40,43 @@ public class WindowView extends Table {
         this.ui = ui;
         this.situation = situation;
         setBackground(ui.rect(situation.eventWindow ? EVENT_WINDOW : WINDOW));
-        setTouchable(Touchable.childrenOnly); // 自己不接收触摸，防止挡住子元素
         pad(8);
 
+        // 面板本体接收触摸并拦截事件:点在面板空隙上不会穿透到地图(误拖地图/误收面板)
+        setTouchable(Touchable.enabled);
+        addListener(new InputListener() {
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                event.stop();
+                return true;
+            }
+        });
+
         String title = situation.eventWindow
-            ? ui.texts.get("event." + situation.selected.id + ".name", situation.selected.id)
+            ? (situation.selected != null
+                ? ui.texts.get("event." + situation.selected.id + ".name", situation.selected.id)
+                : situation.situationId)
             : ui.texts.get("slot." + situation.verbId + ".name", situation.verbId);
 
-        // --- 核心修复：构建一个横跨全宽的标题栏 ---
+        // --- 横跨全宽的标题栏 ---
         header = new Table();
         header.setBackground(ui.rect(HEADER_COLOR));
         header.setTouchable(Touchable.enabled); // 标题栏接收触摸
         header.pad(6);
 
         titleLabel = new Label(title, ui.labelStyle(Color.GOLD));
-        titleLabel.setTouchable(Touchable.disabled); // 文字不拦截，让点击落在 header 上
+        titleLabel.setTouchable(Touchable.disabled); // 文字不拦截,让点击落在 header 上
 
         header.add(titleLabel).left().expandX();
         add(header).growX().padBottom(8).row();
-        // -----------------------------------------
+        // -----------------------
 
-        // 密教式面板：拖标题栏移动,位置写回 situation.x/y(世界坐标,随存档保存)
-        header.addListener(new DragListener() {
-            private float grabX, grabY;
-
-            @Override
-            public void dragStart(InputEvent event, float x, float y, int pointer) {
-                grabX = x;
-                grabY = y;
-            }
-
-            @Override
-            public void drag(InputEvent event, float x, float y, int pointer) {
-                float nx = getX() + (x - grabX);
-                float ny = getY() + (y - grabY);
-                setPosition(nx, ny);
-                situation.x = nx;
-                situation.y = ny;
-            }
-        });
+        // 剧情描述:选了事件显示事件自己的 desc;行动窗没选事件时退回行动(slot)的默认 desc
+        descLabel = new Label("", ui.labelStyle(Color.LIGHT_GRAY));
+        descLabel.setWrap(true);
+        descLabel.setTouchable(Touchable.disabled);
+        descLabel.setVisible(false);
+        add(descLabel).width(CONTENT_W).padTop(2).padBottom(4).row();
 
         Table slotRow = new Table();
         for (int i = 0; i < situation.slots.size(); i++) {
@@ -89,11 +95,11 @@ public class WindowView extends Table {
         ScrollPane scroll = new ScrollPane(slotRow);
         scroll.setScrollingDisabled(false, true);
         scroll.setFadeScrollBars(false);
-        add(scroll).width(Math.min(situation.slots.size() * (SlotActor.W + 8), 380)).padTop(4).row();
+        add(scroll).width(CONTENT_W).padTop(4).row();
 
         status = new Label("", ui.labelStyle(Color.LIGHT_GRAY));
         status.setWrap(true);
-        add(status).width(280).minHeight(56).padTop(6).row();
+        add(status).width(CONTENT_W).minHeight(56).padTop(6).row();
 
         startButton = new TextButton(ui.texts.get("ui.start"), ui.buttonStyle());
         startButton.addListener(new ChangeListener() {
@@ -102,7 +108,7 @@ public class WindowView extends Table {
                 situation.start();
             }
         });
-        if (!situation.eventWindow || !situation.selected.autoStart) {
+        if (!situation.eventWindow || situation.selected == null || !situation.selected.autoStart) {
             add(startButton).width(120).height(40).padTop(6);
         }
 
@@ -122,6 +128,20 @@ public class WindowView extends Table {
             text = ui.texts.get("event." + situation.selected.id + ".name", situation.selected.id);
         }
         status.setText(text);
+
+        // 描述跟随选中事件变化:选了事件显示事件 desc,行动窗退回默认 desc(槽位的默认描述)
+        String d = "";
+        if (situation.selected != null) {
+            String key = "event." + situation.selected.id + ".desc";
+            if (ui.texts.has(key)) d = ui.texts.get(key, "");
+        }
+        if (d.isEmpty() && !situation.eventWindow && situation.verbId != null
+            && ui.texts.has("slot." + situation.verbId + ".desc")) {
+            d = ui.texts.get("slot." + situation.verbId + ".desc", "");
+        }
+        if (!d.equals(descLabel.getText().toString())) descLabel.setText(d);
+        descLabel.setVisible(!d.isEmpty());
+
         startButton.setDisabled(!situation.canStart());
     }
 }

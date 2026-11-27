@@ -49,7 +49,7 @@ public class StartScreen implements Screen {
             root.add(loadBtn).width(250).height(60).padBottom(20).row();
         }
 
-        root.add(new Label("选择新开局", ui.labelStyle(Color.LIGHT_GRAY))).padBottom(20).row();
+        root.add(new Label(ui.texts.get("ui.choose_scenario", "选择新开局"), ui.labelStyle(Color.LIGHT_GRAY))).padBottom(20).row();
 
         for (ScenarioDef sc : scenarios) {
             TextButton button = new TextButton(ui.texts.get("scenario." + sc.id + ".name", sc.id), ui.buttonStyle());
